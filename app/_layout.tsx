@@ -1,39 +1,45 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { AuthProvider } from "../contexts/auth"
+import { useEffect } from "react"
+import { useSegments, useRouter } from "expo-router"
+import { useAuth } from "../contexts/auth"
+import { Slot } from "expo-router"
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+// This component handles the auth flow routing
+function AuthenticatedLayout() {
+  const { user, loading } = useAuth()
+  const segments = useSegments()
+  const router = useRouter()
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    if (loading) {
+      console.log("Loading auth state...")
+      return
     }
-  }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
+    const inAuthGroup = segments[0] === "(auth)"
+    console.log({
+      currentSegments: segments,
+      firstSegment: segments[0],
+      inAuthGroup,
+      userExists: !!user,
+    })
 
+    if (!user && !inAuthGroup) {
+      // Redirect to sign-in if user is not authenticated and not in auth group
+      router.replace("/sign-in")
+    } else if (user && inAuthGroup) {
+      // Redirect to home if user is authenticated and in auth group
+      router.replace("/")
+    }
+  }, [user, loading, segments])
+
+  return <Slot />
+}
+
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
+    <AuthProvider>
+      <AuthenticatedLayout />
+    </AuthProvider>
+  )
 }
