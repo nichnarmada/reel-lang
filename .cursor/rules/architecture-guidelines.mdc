@@ -1,0 +1,245 @@
+---
+description: This rule helps you understand the structure of the project, where to put files when creating them and what should and should not be within components
+globs: 
+---
+# ReelLang Architecture Guidelines
+
+## Directory Structure
+
+```
+app/                   # Expo Router app directory
+├── (auth)/            # Authentication group
+│   ├── login.tsx      # Login screen
+│   └── register.tsx   # Register screen
+├── (tabs)/            # Main tab navigation group
+│   ├── feed/          # Feed tab and nested routes
+│   ├── learn/         # Learning tab and nested routes
+│   └── profile/       # Profile tab and nested routes
+├── _layout.tsx        # Root layout
+└── index.tsx          # Entry redirect
+
+components/            # Reusable components
+│   ├── common/           # Shared components (buttons, inputs, etc)
+│   ├── feed/            # Video feed related components
+│   ├── learning/        # Learning feature components
+│   ├── profile/         # User profile components
+│   └── analytics/       # Progress tracking components
+hooks/                 # Custom hooks
+services/             # API and external service integrations
+store/                # State management
+types/                # TypeScript type definitions
+utils/                # Helper functions and constants
+constants/            # App constants and configuration
+assets/               # Images, fonts, and other static files
+styles/               # Global styles and theme configuration
+```
+
+## Core Principles
+
+### 1. Route Organization
+
+- Use route groups `(group)` for logical separation
+- Implement layouts with `_layout.tsx` files
+- Handle authentication with protected routes
+- Keep route components focused on data and layout
+
+```typescript
+// app/(tabs)/feed/index.tsx
+export default function FeedRoute() {
+  const { videos, isLoading } = useVideos()
+  const { saveVideo } = useVideoActions()
+
+  return (
+    <View>
+      <VideoFeed videos={videos} isLoading={isLoading} onSave={saveVideo} />
+    </View>
+  )
+}
+
+// app/(tabs)/_layout.tsx
+export default function TabsLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen name="feed" options={{ title: "Feed" }} />
+      <Tabs.Screen name="learn" options={{ title: "Learn" }} />
+      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+    </Tabs>
+  )
+}
+```
+
+### 2. Component Organization
+
+#### Common Components
+
+- Reusable UI components
+- No business logic
+- Styled consistently
+- Well-documented props
+
+```typescript
+// components/common/Button.tsx
+interface ButtonProps {
+  title: string
+  onPress: () => void
+  variant?: "primary" | "secondary"
+  disabled?: boolean
+}
+
+export function Button({
+  title,
+  onPress,
+  variant = "primary",
+  disabled,
+}: ButtonProps) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      style={styles[variant]}
+    >
+      <Text>{title}</Text>
+    </TouchableOpacity>
+  )
+}
+```
+
+#### Feature Components
+
+- Group related components by feature
+- Keep components focused and single-purpose
+- Use composition for complex features
+
+### 3. Navigation and Routing
+
+- Use file-based routing with Expo Router
+- Implement deep linking with `expo-router`
+- Type route params using `useLocalSearchParams`
+- Handle navigation with `router.push()` and `Link`
+
+```typescript
+// app/(tabs)/feed/[id].tsx
+import { useLocalSearchParams, router } from "expo-router"
+
+export default function VideoRoute() {
+  const { id } = useLocalSearchParams<{ id: string }>()
+
+  return <VideoDetail videoId={id} onClose={() => router.back()} />
+}
+```
+
+### 4. Data Handling
+
+- Use React Query for remote data management
+- Implement local caching with AsyncStorage
+- Handle offline capabilities
+- Keep data fetching logic in hooks
+
+```typescript
+// hooks/useVideos.ts
+export function useVideos() {
+  return useQuery("videos", async () => {
+    const cached = await AsyncStorage.getItem("videos")
+    if (cached && !isStale(cached)) {
+      return JSON.parse(cached)
+    }
+    const videos = await videoService.fetchVideos()
+    await AsyncStorage.setItem("videos", JSON.stringify(videos))
+    return videos
+  })
+}
+```
+
+### 5. State Management
+
+- Use React Query for server state
+- Use Zustand for global UI state
+- Keep component state minimal
+- Implement proper loading states
+
+```typescript
+// store/userStore.ts
+interface UserStore {
+  user: User | null
+  setUser: (user: User | null) => void
+  preferences: UserPreferences
+  updatePreferences: (prefs: Partial<UserPreferences>) => void
+}
+
+export const useUserStore = create<UserStore>((set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+  preferences: defaultPreferences,
+  updatePreferences: (prefs) =>
+    set((state) => ({
+      preferences: { ...state.preferences, ...prefs },
+    })),
+}))
+```
+
+### 6. Styling
+
+- Use StyleSheet for static styles
+- Implement responsive design
+- Follow design system tokens
+- Keep styles close to components
+
+```typescript
+// components/feed/VideoCard.tsx
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    height: Dimensions.get("window").height,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.text.primary,
+  },
+  // ...
+})
+```
+
+### 7. Performance Guidelines
+
+- Implement proper list virtualization
+- Use memo for expensive components
+- Optimize image loading
+- Handle video preloading
+
+```typescript
+// components/feed/VideoFeed.tsx
+export function VideoFeed({ videos }) {
+  const renderItem = useCallback(({ item }) => <VideoCard video={item} />, [])
+
+  return (
+    <FlashList
+      data={videos}
+      renderItem={renderItem}
+      estimatedItemSize={200}
+      onEndReached={loadMore}
+      removeClippedSubviews
+    />
+  )
+}
+```
+
+## Anti-patterns to Avoid
+
+1. ❌ Prop drilling more than 2 levels
+2. ❌ Direct API calls in components
+3. ❌ Inline styles for repeated elements
+4. ❌ Unsafe type assertions
+5. ❌ Complex logic in route components
+6. ❌ Nested navigation in components
+7. ❌ Synchronous storage operations
+
+## Best Practices
+
+1. ✅ Use route groups for organization
+2. ✅ Handle offline states
+3. ✅ Type all props and functions
+4. ✅ Document complex logic
+5. ✅ Test critical paths
+6. ✅ Optimize video playback
+7. ✅ Follow accessibility guidelines

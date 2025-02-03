@@ -1,0 +1,242 @@
+---
+description: Database guidelines of the current project
+globs: 
+---
+# ReelLang Database Guidelines
+
+Remember to refer to the complete database structure in `database-structure.md` for the full data model.
+
+## General Rules
+
+1. **Collection Naming**
+
+   - Use camelCase for collection names
+   - Keep names descriptive and concise
+   - Example: `users`, `userProgress`, `videoContent`
+2. **Document IDs**
+
+   - Use Firebase auto-generated IDs unless there's a specific need for custom IDs
+   - For user documents, use Firebase Auth UID
+   - For videos, use a meaningful prefix: `vid_${autoId}`
+3. **Field Naming**
+
+   - Use camelCase for field names
+   - Avoid abbreviations unless commonly known
+   - Use descriptive names: `createdAt` instead of `cAt`
+
+## Data Access Patterns
+
+1. **Reading Data**
+
+   ```typescript
+   // ✅ DO: Use specific queries
+   const userVideos = await db
+     .collection('progress')
+     .where('userId', '==', currentUserId)
+     .limit(10)
+     .get()
+
+   // ❌ DON'T: Fetch entire collections
+   const allVideos = await db.collection('videos').get()
+   ```
+2. **Writing Data**
+
+   ```typescript
+   // ✅ DO: Use batch writes for related updates
+   const batch = db.batch()
+   batch.update(userRef, { points: increment(10) })
+   batch.set(progressRef, { completed: true })
+   await batch.commit()
+
+   // ❌ DON'T: Use multiple separate writes
+   await userRef.update({ points: increment(10) })
+   await progressRef.set({ completed: true })
+   ```
+
+## Storage Guidelines
+
+1. **File Organization**
+
+   ```typescript
+   // ✅ DO: Use structured paths
+   storage/videos/${videoId}/source.mp4
+   storage/videos/${videoId}/thumbnails/small.jpg
+   storage/videos/${videoId}/captions/en.vtt
+
+   // ❌ DON'T: Use flat structure
+   storage/video_123.mp4
+   storage/thumbnail_123.jpg
+   ```
+2. **File Naming**
+
+   - Use lowercase for filenames
+   - Use hyphens for spaces
+   - Include purpose in filename: `thumbnail-small.jpg`
+
+## Data Validation
+
+1. **Type Checking**
+
+   ```typescript
+   // ✅ DO: Define and use TypeScript interfaces
+   interface UserProgress {
+     videoId: string
+     completedAt: Timestamp
+     score: number
+   }
+
+   // ❌ DON'T: Use untyped objects
+   const progress = { 
+     videoId, 
+     completedAt, 
+     score 
+   }
+   ```
+2. **Security Rules**
+
+   ```typescript
+   // ✅ DO: Write specific security rules
+   match /users/{userId}/progress/{videoId} {
+     allow read, write: if request.auth.uid == userId;
+   }
+
+   // ❌ DON'T: Use overly permissive rules
+   match /users/{userId} {
+     allow read, write: if request.auth != null;
+   }
+   ```
+
+## Performance Best Practices
+
+1. **Query Optimization**
+
+   ```typescript
+   // ✅ DO: Use compound queries with indexes
+   const videos = await db
+     .collection('videos')
+     .where('language', '==', 'spanish')
+     .where('level', '==', 'beginner')
+     .orderBy('createdAt', 'desc')
+     .limit(10)
+     .get()
+
+   // ❌ DON'T: Filter in application code
+   const allVideos = await db.collection('videos').get()
+   const filtered = allVideos.filter(...)
+   ```
+2. **Data Denormalization**
+
+   ```typescript
+   // ✅ DO: Denormalize frequently accessed data
+   videos/{videoId} {
+     title: string
+     creatorName: string  // Denormalized from user
+     thumbnailUrl: string
+   }
+
+   // ❌ DON'T: Rely on multiple queries
+   const video = await videoRef.get()
+   const creator = await userRef.get()
+   ```
+
+## Real-time Updates
+
+1. **Listeners**
+
+   ```typescript
+   // ✅ DO: Be specific with listeners
+   const unsubscribe = db
+     .collection('users')
+     .doc(userId)
+     .collection('progress')
+     .where('status', '==', 'active')
+     .onSnapshot(snapshot => {
+       // Handle updates
+     })
+
+   // Clean up when done
+   useEffect(() => {
+     return () => unsubscribe()
+   }, [])
+   ```
+2. **Offline Persistence**
+
+   ```typescript
+   // ✅ DO: Enable offline persistence selectively
+   enablePersistence({
+     synchronizeTabs: true,
+     cacheSizeBytes: 5242880 // 5MB
+   })
+   ```
+
+## Error Handling
+
+1. **Transaction Safety**
+
+   ```typescript
+   // ✅ DO: Use transactions for dependent updates
+   await db.runTransaction(async (transaction) => {
+     const userDoc = await transaction.get(userRef)
+     if (!userDoc.exists) {
+       throw new Error('User not found')
+     }
+     transaction.update(userRef, { points: userDoc.data().points + 10 })
+   })
+   ```
+2. **Batch Operations**
+
+   ```typescript
+   // ✅ DO: Handle batch size limits
+   const MAX_BATCH = 500
+   const batches = []
+
+   for (let i = 0; i < updates.length; i += MAX_BATCH) {
+     const batch = db.batch()
+     updates.slice(i, i + MAX_BATCH).forEach(update => {
+       batch.update(/* ... */)
+     })
+     batches.push(batch.commit())
+   }
+
+   await Promise.all(batches)
+   ```
+
+## Testing
+
+1. **Use Emulators**
+
+   ```typescript
+   // ✅ DO: Use Firebase emulators for testing
+   if (process.env.NODE_ENV === 'development') {
+     connectFirestoreEmulator('localhost', 8080)
+     connectStorageEmulator('localhost', 9199)
+   }
+   ```
+2. **Data Cleanup**
+
+   ```typescript
+   // ✅ DO: Clean up test data
+   afterEach(async () => {
+     await firebase.clearFirestoreData()
+   })
+   ```
+
+## Documentation
+
+1. **Code Comments**
+
+   ```typescript
+   // ✅ DO: Document complex queries
+   /** 
+    * Fetches active learning sessions for user
+    * Indexed by: userId, status, lastActive
+    */
+   const getActiveSessions = async (userId: string) => {
+     // Query implementation
+   }
+   ```
+2. **Index Documentation**
+
+   - Document all required indexes in `firestore.indexes.json`
+   - Include reasoning for each composite index
+   - Keep track of index usage
