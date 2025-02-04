@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   Image,
+  Platform,
 } from "react-native"
 import { useAuth } from "../../contexts/auth"
 import {
@@ -18,6 +19,7 @@ import {
   LogOut,
   ChevronRight,
 } from "lucide-react-native"
+import { HEADER_PADDING } from "../../constants/layout"
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth()
@@ -34,6 +36,11 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Profile</Text>
+        <Text style={styles.email}>{user?.email}</Text>
+      </View>
+
       {/* Profile Header */}
       <View style={styles.header}>
         <Image
@@ -41,7 +48,6 @@ export default function ProfileScreen() {
           style={styles.avatar}
         />
         <Text style={styles.name}>{user?.displayName || "Learner"}</Text>
-        <Text style={styles.email}>{user?.email}</Text>
       </View>
 
       {/* Learning Preferences */}
@@ -105,9 +111,8 @@ export default function ProfileScreen() {
       </View>
 
       {/* Sign Out */}
-      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <LogOut size={24} color="#ff4444" />
-        <Text style={styles.signOutText}>Sign Out</Text>
+      <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+        <Text style={styles.buttonText}>Sign Out</Text>
       </TouchableOpacity>
     </ScrollView>
   )
@@ -117,13 +122,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+    ...HEADER_PADDING,
   },
   header: {
-    alignItems: "center",
     padding: 20,
-    paddingTop: 40,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  email: {
+    fontSize: 16,
+    color: "#666",
+  },
+  button: {
+    margin: 20,
+    padding: 16,
+    backgroundColor: "#ff4444",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   avatar: {
     width: 100,
@@ -135,10 +158,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 4,
-  },
-  email: {
-    fontSize: 16,
-    color: "#666",
   },
   section: {
     padding: 20,
@@ -165,20 +184,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 12,
     color: "#333",
-  },
-  signOutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    margin: 20,
-    backgroundColor: "#ffebee",
-    borderRadius: 8,
-  },
-  signOutText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: "#ff4444",
-    fontWeight: "600",
   },
 })

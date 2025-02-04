@@ -6,6 +6,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Text,
+  Platform,
 } from "react-native"
 import { useVideoFeed } from "../../hooks/useVideoFeed"
 import VideoPlayer from "../../components/video/VideoPlayer"
@@ -74,6 +75,7 @@ const styles = StyleSheet.create({
   itemContainer: {
     height: LAYOUT.VIDEO_CONTAINER_HEIGHT,
     width: Dimensions.get("window").width,
+    marginTop: Platform.OS === "ios" ? 60 : 20,
   },
   centerContainer: {
     flex: 1,

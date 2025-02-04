@@ -6,11 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  RefreshControl,
+  TextInput,
+  Platform,
 } from "react-native"
 import { router } from "expo-router"
 import { useTopics } from "../../contexts/topics"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
+import { Search } from "lucide-react-native"
 
 export default function DiscoverScreen() {
   const {
@@ -22,9 +26,15 @@ export default function DiscoverScreen() {
     error,
     selectTopic,
     unselectTopic,
+    refreshTopics,
   } = useTopics()
 
-  console.log("Featured Topics:", featuredTopics)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [refreshing, setRefreshing] = useState(false)
+
+  const filteredTopics = topics.filter((topic) =>
+    topic.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   const toggleTopic = async (topicId: string) => {
     const isSelected = userPreferences?.selectedTopics.some(
@@ -37,6 +47,12 @@ export default function DiscoverScreen() {
     }
   }
 
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await refreshTopics()
+    setRefreshing(false)
+  }
+
   if (loading) {
     return <LoadingSpinner />
   }
@@ -46,72 +62,89 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Discover Topics</Text>
-        <Text style={styles.subtitle}>Select topics that interest you</Text>
-      </View>
-
-      {/* Featured Topics */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Featured Topics</Text>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={featuredTopics}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.featuredCard}
-              onPress={() => router.push(`/topics/${item.id}`)}
-            >
-              <Text style={styles.topicIcon}>{item.icon}</Text>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardSubtitle}>{item.description}</Text>
-            </TouchableOpacity>
-          )}
-          keyExtractor={(item) => item.id}
-        />
-      </View>
-
-      {/* All Topics Grid */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>All Topics</Text>
-        <View style={styles.topicsGrid}>
-          {topics.map((topic) => (
-            <TouchableOpacity
-              key={topic.id}
-              style={[
-                styles.topicCard,
-                userPreferences?.selectedTopics.some(
-                  (t) => t.topicId === topic.id
-                ) && styles.selectedTopic,
-              ]}
-              onPress={() => toggleTopic(topic.id)}
-            >
-              <Text style={styles.topicIcon}>{topic.icon}</Text>
-              <Text style={styles.topicName}>{topic.name}</Text>
-            </TouchableOpacity>
-          ))}
+    <ScrollView
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Discover Topics</Text>
+          <Text style={styles.subtitle}>Select topics that interest you</Text>
         </View>
-      </View>
 
-      {/* Popular Learning Paths */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Popular Learning Paths</Text>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={topicPaths}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.pathCard}>
-              <Text style={styles.pathTitle}>{item.name}</Text>
-              <Text style={styles.pathDetails}>
-                {item.videoCount} videos • {item.quizCount} quizzes
-              </Text>
-            </TouchableOpacity>
-          )}
-          keyExtractor={(item) => `path-${item.id}`}
-        />
+        {/* Add Search Bar */}
+        <View style={styles.searchContainer}>
+          <Search size={20} color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search topics..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        {/* Featured Topics */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Featured Topics</Text>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={featuredTopics}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.featuredCard}
+                onPress={() => router.push(`/topics/${item.id}`)}
+              >
+                <Text style={styles.topicIcon}>{item.icon}</Text>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={styles.cardSubtitle}>{item.description}</Text>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => item.id}
+          />
+        </View>
+
+        {/* All Topics Grid */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>All Topics</Text>
+          <View style={styles.topicsGrid}>
+            {filteredTopics.map((topic) => (
+              <TouchableOpacity
+                key={topic.id}
+                style={[
+                  styles.topicCard,
+                  userPreferences?.selectedTopics.some(
+                    (t) => t.topicId === topic.id
+                  ) && styles.selectedTopic,
+                ]}
+                onPress={() => toggleTopic(topic.id)}
+              >
+                <Text style={styles.topicIcon}>{topic.icon}</Text>
+                <Text style={styles.topicName}>{topic.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Popular Learning Paths */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Popular Learning Paths</Text>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={topicPaths}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={styles.pathCard}>
+                <Text style={styles.pathTitle}>{item.name}</Text>
+                <Text style={styles.pathDetails}>
+                  {item.videoCount} videos • {item.quizCount} quizzes
+                </Text>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => `path-${item.id}`}
+          />
+        </View>
       </View>
     </ScrollView>
   )
@@ -121,6 +154,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+    paddingTop: Platform.OS === "ios" ? 60 : 20,
   },
   header: {
     padding: 20,
@@ -212,5 +246,14 @@ const styles = StyleSheet.create({
   pathDetails: {
     fontSize: 12,
     color: "#666",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+  },
+  searchInput: {
+    flex: 1,
+    padding: 8,
   },
 })

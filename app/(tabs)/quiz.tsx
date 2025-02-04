@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  Platform,
 } from "react-native"
 import { router } from "expo-router"
 import { Quiz } from "../../types/quiz"
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingTop: Platform.OS === "ios" ? 60 : 20,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },

@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
+  Platform,
 } from "react-native"
 import { LineChart } from "lucide-react-native"
 import { TopicProgress } from "../../types/topic"
@@ -143,6 +144,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+    paddingTop: Platform.OS === "ios" ? 60 : 20,
   },
   header: {
     padding: 20,
