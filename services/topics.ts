@@ -147,22 +147,29 @@ export const getFeaturedTopics = async (): Promise<FeaturedTopic[]> => {
       .orderBy("priority", "desc")
       .get()
 
-    // We need to fetch the actual topic data since featuredTopics only has references
     const featuredTopics = await Promise.all(
       snapshot.docs.map(async (doc) => {
-        const topicDoc = await topicsRef.doc(doc.data().topicId).get()
+        const featuredData = doc.data()
+        const topicDoc = await topicsRef.doc(featuredData.topicId).get()
+
+        if (!topicDoc.exists) {
+          console.warn(`Topic ${featuredData.topicId} not found`)
+          return null
+        }
+
         return {
-          id: doc.id,
-          ...topicDoc.data(), // Topic data
-          ...doc.data(), // Featured data (priority, featuredUntil, etc)
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate(),
-          featuredUntil: doc.data().featuredUntil?.toDate(),
+          id: featuredData.topicId,
+          ...topicDoc.data(),
+          featuredUntil: featuredData.featuredUntil?.toDate(),
+          priority: featuredData.priority,
+          cardImage: featuredData.cardImage,
         } as FeaturedTopic
       })
     )
 
-    return featuredTopics
+    return featuredTopics.filter(
+      (topic): topic is FeaturedTopic => topic !== null
+    )
   } catch (error) {
     console.error("Error fetching featured topics:", error)
     throw error
