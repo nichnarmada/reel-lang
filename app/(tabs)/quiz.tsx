@@ -8,9 +8,10 @@ import {
   FlatList,
 } from "react-native"
 import { router } from "expo-router"
+import { Quiz } from "../../types/quiz"
 
 // Example quiz data - would come from Firestore in production
-const QUIZZES = [
+const QUIZZES: Quiz[] = [
   {
     id: "1",
     topic: "Technology",
@@ -39,7 +40,7 @@ export default function QuizScreen() {
     "available"
   )
 
-  const renderQuizCard = ({ item }) => (
+  const renderQuizCard = ({ item }: { item: Quiz }) => (
     <TouchableOpacity
       style={styles.quizCard}
       onPress={() => router.push(`/quiz/${item.id}`)}

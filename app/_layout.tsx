@@ -2,6 +2,7 @@ import { AuthProvider } from "../contexts/auth"
 import { useEffect } from "react"
 import { useSegments, useRouter, Stack } from "expo-router"
 import { useAuth } from "../contexts/auth"
+import { TopicsProvider } from "../contexts/topics"
 
 // This component handles the auth flow routing
 function AuthenticatedLayout() {
@@ -43,7 +44,9 @@ function AuthenticatedLayout() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <AuthenticatedLayout />
+      <TopicsProvider>
+        <AuthenticatedLayout />
+      </TopicsProvider>
     </AuthProvider>
   )
 }
