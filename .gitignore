@@ -5,6 +5,7 @@ node_modules/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
@@ -38,3 +39,21 @@ yarn-error.*
 # Firebase config files
 google-services.json
 GoogleService-Info.plist
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# Ignore build artifacts for Android
+android/app/build/
+android/.gradle/
+android/.idea/
+
+# Ignore build artifacts for iOS
+ios/build/
+ios/Pods/
