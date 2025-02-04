@@ -1,5 +1,11 @@
 import { Tabs } from "expo-router"
-import { FontAwesome } from "@expo/vector-icons"
+import {
+  Film,
+  UserRoundPen,
+  Brain,
+  LineChart,
+  Telescope,
+} from "lucide-react-native"
 import { LAYOUT } from "../../constants/layout"
 
 export default function TabLayout() {
@@ -15,19 +21,36 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Feed",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome size={24} name="home" color={color} />
-          ),
+          title: "Discover",
+          tabBarIcon: ({ color }) => <Telescope size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="reels"
+        options={{
+          title: "Learn",
+          tabBarIcon: ({ color }) => <Film size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="quiz"
+        options={{
+          title: "Quiz",
+          tabBarIcon: ({ color }) => <Brain size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="progress"
+        options={{
+          title: "Progress",
+          tabBarIcon: ({ color }) => <LineChart size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome size={24} name="user" color={color} />
-          ),
+          tabBarIcon: ({ color }) => <UserRoundPen size={24} color={color} />,
         }}
       />
     </Tabs>
