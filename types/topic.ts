@@ -19,11 +19,28 @@ export interface Topic {
   parentTopic?: string
   subtopics: string[]
   relatedTopics: string[]
+  category: string
+  tags: string[]
 
   // Metadata
   videoCount: number
   learnerCount: number
   difficulty: DifficultyLevel
+  estimatedDuration: number // in hours
+  completionRate: number
+  trendingScore?: number // For trending topics
+  expertCount?: number // Number of experts in this topic
+
+  // Learning content
+  videos?: {
+    id: string
+    title: string
+    thumbnail: string
+    duration: number
+    tags: string[]
+    viewCount: number
+    likes: number
+  }[]
 
   // Timestamps
   createdAt: Date
@@ -43,10 +60,27 @@ export interface TopicProgress {
   achievements: Achievement[]
 }
 
+export interface LearningGoal {
+  id: string
+  userId: string
+  title: string
+  category?: string
+  tags: string[]
+  createdAt: Date
+  updatedAt: Date
+  progress?: number
+  relatedTopics?: string[]
+}
+
 export interface UserTopicPreferences {
   userId: string
-  selectedTopics: TopicPreference[]
-  excludedTopics: string[] // Topics user has explicitly hidden/removed
+  learningGoals: LearningGoal[]
+  selectedTopics: {
+    topicId: string
+    difficulty: DifficultyLevel
+    addedAt: Date
+    goalId?: string // Associate topic with a learning goal
+  }[]
 }
 
 // For the featured topics section
@@ -61,6 +95,8 @@ export interface TopicPath {
   id: string
   name: string
   description: string
+  category: string
+  thumbnail?: string
   topics: {
     topicId: string
     order: number
@@ -70,6 +106,9 @@ export interface TopicPath {
   estimatedDuration: number // in minutes
   videoCount: number
   quizCount: number
+  tags: string[]
+  completionCount: number // How many users completed this path
+  rating?: number // Average user rating
 }
 
 // For topic discovery
@@ -77,5 +116,25 @@ export interface TopicSuggestion {
   topicId: string
   relevanceScore: number
   reason: string
-  basedOn: string[] // topicIds that led to this suggestion
+  basedOn: {
+    type: "goal" | "topic" | "interest"
+    id: string
+  }[]
+  tags: string[]
+  matchPercentage?: number // How well it matches user's interests
+}
+
+export interface RelatedContent {
+  id: string
+  type: "video" | "path" | "topic"
+  title: string
+  description: string
+  thumbnail?: string
+  tags: string[]
+  relevanceScore: number
+  goalId?: string // Which learning goal this content is related to
+  duration?: number // Duration in seconds for videos
+  viewCount?: number
+  likes?: number
+  createdAt: Date
 }
