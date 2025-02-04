@@ -1,26 +1,14 @@
-import { useVideoPlayer, VideoView } from "expo-video"
-import { View, StyleSheet, Dimensions } from "react-native"
+import React from "react"
+import { View, Image, StyleSheet, Dimensions } from "react-native"
 import type { VideoPlayerProps } from "../../types/video"
 
-export default function VideoPlayer({
-  video,
-  autoPlay = true,
-}: VideoPlayerProps) {
-  const player = useVideoPlayer(video.url, (player) => {
-    if (autoPlay) {
-      player.play()
-    }
-    player.loop = true
-  })
-
+export default function VideoPlayer({ video }: VideoPlayerProps) {
   return (
     <View style={styles.container}>
-      <VideoView
-        player={player}
-        style={styles.video}
-        allowsFullscreen
-        allowsPictureInPicture
-        nativeControls={false}
+      <Image
+        source={{ uri: video.thumbnailUrl }}
+        style={styles.image}
+        resizeMode="cover"
       />
     </View>
   )
@@ -28,10 +16,11 @@ export default function VideoPlayer({
 
 const styles = StyleSheet.create({
   container: {
-    height: Dimensions.get("window").height,
-    backgroundColor: "#000",
-  },
-  video: {
     flex: 1,
+  },
+  image: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
   },
 })

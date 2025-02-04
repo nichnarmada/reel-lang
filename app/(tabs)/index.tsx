@@ -1,50 +1,86 @@
-import React from "react"
-import { View, FlatList, StyleSheet, Dimensions } from "react-native"
+import React, { useEffect } from "react"
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  Dimensions,
+  ActivityIndicator,
+  Text,
+} from "react-native"
 import { useVideoFeed } from "../../hooks/useVideoFeed"
 import VideoPlayer from "../../components/video/VideoPlayer"
-import { useCallback } from "react"
 import type { Video } from "../../types/video"
-import FirestoreTest from "../../components/debug/FirestoreTest"
+import { LAYOUT } from "../../constants/layout"
 
 export default function FeedScreen() {
   const { videos, loading, error, loadVideos, hasMore, refresh } =
     useVideoFeed()
 
-  const renderVideo = useCallback(
-    ({ item: video }: { item: Video }) => (
-      <View style={styles.videoContainer}>
-        <VideoPlayer video={video} />
-      </View>
-    ),
-    []
+  // Load videos when component mounts
+  useEffect(() => {
+    loadVideos()
+  }, [loadVideos])
+
+  const renderVideo = ({ item: video }: { item: Video }) => (
+    <View style={styles.itemContainer}>
+      <VideoPlayer video={video} />
+    </View>
   )
 
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Error loading videos</Text>
+      </View>
+    )
+  }
+
+  if (loading && !videos.length) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    )
+  }
+
+  console.log({
+    height:
+      Dimensions.get("window").height -
+      (LAYOUT.TAB_BAR_HEIGHT + LAYOUT.STATUS_BAR_HEIGHT),
+  })
+
   return (
-    <React.Fragment>
-      <FirestoreTest />
-      <FlatList
-        data={videos}
-        renderItem={renderVideo}
-        keyExtractor={(item) => item.id}
-        pagingEnabled
-        snapToInterval={Dimensions.get("window").height}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        onEndReached={() => hasMore && loadVideos()}
-        onEndReachedThreshold={0.5}
-        onRefresh={refresh}
-        refreshing={loading}
-        viewabilityConfig={{
-          itemVisiblePercentThreshold: 50,
-        }}
-      />
-    </React.Fragment>
+    <FlatList
+      data={videos}
+      renderItem={renderVideo}
+      keyExtractor={(item) => item.id}
+      pagingEnabled
+      snapToInterval={Dimensions.get("window").height}
+      snapToAlignment="start"
+      decelerationRate="fast"
+      onEndReached={() => hasMore && loadVideos()}
+      onEndReachedThreshold={0.5}
+      onRefresh={refresh}
+      refreshing={loading}
+      viewabilityConfig={{
+        itemVisiblePercentThreshold: 50,
+      }}
+    />
   )
 }
 
 const styles = StyleSheet.create({
-  videoContainer: {
-    height: Dimensions.get("window").height,
+  itemContainer: {
+    height: LAYOUT.VIDEO_CONTAINER_HEIGHT,
     width: Dimensions.get("window").width,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 16,
   },
 })
