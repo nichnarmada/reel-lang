@@ -1,35 +1,37 @@
-# Week 1: Core Features
+# User Stories
 
-### Essential
+## Week 1
 
-- [ ] As a user, I want to select my learning interests
-- [ ] As a user, I want to watch topic-filtered short videos
-- [ ] As a user, I want to save videos for later review
-- [ ] As a user, I want to track my learning streaks
-- [ ] As a user, I want to mark topics as mastered
-- [ ] As a user, I want to switch between different interest feeds
+### Core User Stories
 
-### Additional
+- As a learner, I want to input a topic I want to learn about today
+- As a learner, I want to set a timer for my learning session (5/10/15 mins)
+- As a learner, I want to watch topic-filtered short videos continuously
+- As a learner, I want to see how much time is left in my session
+- As a learner, I want to take a quiz after my session ends
+- As a learner, I want to track my learning history by topic
 
-- [ ] As a user, I want to create custom topic playlists
-- [ ] As a user, I want to share interesting learning videos
-- [ ] As a user, I want topic recommendations
-- [ ] As a user, I want to see my viewing statistics
+### Additional Features
 
-# Week 2: AI Features
+- As a learner, I want topic suggestions if I'm unsure what to learn
+- As a learner, I want to save videos for later review
+- As a learner, I want to pause my session if needed
+- As a learner, I want to share interesting videos
 
-### Essential
+## Week 2
 
-- [ ] As a user, I want auto-generated quizzes from watched content
-- [ ] As a user, I want to track my topic comprehension
-- [ ] As a user, I want personalized content recommendations
-- [ ] As a user, I want to see my knowledge gaps
-- [ ] As a user, I want learning milestone celebrations
-- [ ] As a user, I want topic mastery assessments
+### Core AI Features
 
-### Additional
+- As a learner, I want AI-generated quizzes based on watched content
+- As a learner, I want personalized topic suggestions
+- As a learner, I want to see my knowledge gaps in topics
+- As a learner, I want difficulty-appropriate content
+- As a learner, I want topic mastery tracking
+- As a learner, I want learning path recommendations
 
-- [ ] As a user, I want content difficulty predictions
-- [ ] As a user, I want learning summaries
-- [ ] As a user, I want cross-topic connections
-- [ ] As a user, I want study reminders
+### Additional AI Features
+
+- As a learner, I want content summaries after sessions
+- As a learner, I want cross-topic connections identified
+- As a learner, I want personalized session length recommendations
+- As a learner, I want performance insights across topics

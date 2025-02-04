@@ -1,4 +1,4 @@
-# LearnLoop Database Structure
+# Database Structure
 
 ## Firebase Products Used
 
@@ -26,152 +26,132 @@ We'll utilize the following Firebase products for our database needs:
 ### Users Collection
 
 ```typescript
-users/{userId} {
-  uid: string
-  email: string
-  displayName: string
-  photoURL?: string
-  createdAt: timestamp
-  lastActive: timestamp
-
-  // Learning preferences
-  interests: string[]  // Topics of interest
-  expertiseLevels: {
-    [topic: string]: 'beginner' | 'intermediate' | 'advanced'
-  }
-
-  // Gamification
-  streak: number
-  lastStreakUpdate: timestamp
-  points: number
-  achievements: string[]
-
-  // Settings
-  notifications: boolean
-  autoplay: boolean
-}
-```
-
-### Videos Collection
-
-```typescript
-videos/{videoId} {
-  id: string
-  title: string
-  description: string
-  topics: string[]  // Main topics covered
-  difficulty: 'beginner' | 'intermediate' | 'advanced'
-
-  // Media
-  videoUrl: string
-  thumbnailUrl: string
-  duration: number
-
-  // Content metadata
-  tags: string[]
-  categories: string[]
-  transcriptUrl?: string
-
-  // Stats
-  views: number
-  likes: number
-  shares: number
-
-  // Creator info
-  creatorId: string
-  createdAt: timestamp
-
-  // Learning metadata
-  keyPoints: string[]
-  relatedTopics: string[]
-}
-```
-
-### User Progress Collection
-
-```typescript
-users/{userId}/progress/{videoId} {
-  videoId: string
-  watched: boolean
-  watchedDuration: number
-  lastWatched: timestamp
-
-  // Learning progress
-  comprehensionScore?: number
-  quizzes: {
-    quizId: string
-    score: number
-    completedAt: timestamp
-  }[]
-
-  // User engagement
-  liked: boolean
-  saved: boolean
-  notes?: string
+users: {
+  uid: string;
+  profile: {
+    name: string;
+    email: string;
+    photoURL?: string;
+    createdAt: timestamp;
+    lastActive: timestamp;
+  };
+  preferences: {
+    defaultSessionLength: number; // in minutes
+    topicsOfInterest: string[];
+    difficultyPreference: 'beginner' | 'intermediate' | 'advanced';
+  };
+  stats: {
+    totalLearningTime: number; // in minutes
+    sessionsCompleted: number;
+    topicsExplored: number;
+    averageQuizScore: number;
+  };
+  achievements: {
+    achievementId: string;
+    unlockedAt: timestamp;
+  }[];
 }
 ```
 
 ### Topics Collection
 
 ```typescript
-topics/{topicId} {
-  name: string
-  description: string
-  parentTopic?: string
-  subtopics: string[]
-  relatedTopics: string[]
-
-  // Topic metadata
-  videoCount: number
-  learnerCount: number
-  difficulty: 'beginner' | 'intermediate' | 'advanced'
+topics: {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  relatedTopics: string[]; // references to other topic IDs
+  difficultyLevels: {
+    beginner: boolean;
+    intermediate: boolean;
+    advanced: boolean;
+  };
+  searchTerms: string[]; // for better search functionality
+  popularity: number; // for trending topics
 }
 ```
 
-### User Topic Progress Collection
+### Videos Collection
 
 ```typescript
-users/{userId}/topicProgress/{topicId} {
+videos: {
+  id: string;
+  title: string;
+  description: string;
+  duration: number; // in seconds
+  url: string;
+  thumbnailUrl: string;
+  topicIds: string[]; // references to topics
+  transcript: string; // for quiz generation
+  keyPoints: string[]; // main concepts covered
+  metadata: {
+    source: string;
+    author: string;
+    uploadDate: timestamp;
+  };
+  engagement: {
+    views: number;
+    saves: number;
+    shares: number;
+    completionRate: number;
+  };
+}
+```
+
+### Sessions Collection
+
+```typescript
+sessions: {
+  id: string
+  userId: string
   topicId: string
-  started: timestamp
-  lastActivity: timestamp
-
-  // Progress metrics
-  videosWatched: number
-  quizzesTaken: number
-  averageScore: number
-  masteryLevel: number // 0-100
-
-  // Milestones
-  achievements: {
-    achievementId: string
-    unlockedAt: timestamp
-  }[]
+  config: {
+    duration: number // in minutes
+    startTime: timestamp
+    endTime: timestamp
+    status: "active" | "completed" | "paused"
+  }
+  watchHistory: {
+    videoId: string
+    watchedDuration: number
+    timestamp: timestamp
+  }
+  ;[]
+  quizResults: {
+    score: number
+    totalQuestions: number
+    timeSpent: number
+  }
 }
 ```
 
-### AI-Generated Content Collection
+### Quizzes Collection
 
 ```typescript
-videos/{videoId}/aiContent {
-  quizzes: {
-    question: string
-    options: string[]
-    correctAnswer: string
-    explanation: string
-  }[]
-
-  summary: {
-    key_points: string[]
-    main_concepts: string[]
-    follow_up_topics: string[]
-  }
-
-  comprehensionMetrics: {
-    difficulty_score: number
-    prerequisites: string[]
-    estimated_duration: number
-  }
+quizzes: {
+  id: string;
+  sessionId: string;
+  userId: string;
+  questions: {
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    explanation: string;
+    topicId: string;
+    videoReference: string; // video ID this question was generated from
+  }[];
+  userResponses: {
+    questionId: string;
+    selectedAnswer: string;
+    isCorrect: boolean;
+    timeSpent: number;
+  }[];
+  metadata: {
+    generatedAt: timestamp;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    topics: string[]; // topic IDs covered
+  };
 }
 ```
 
@@ -190,14 +170,23 @@ service cloud.firestore {
     // Videos
     match /videos/{videoId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isCreator;
     }
 
     // Topics
     match /topics/{topicId} {
       allow read: if request.auth != null;
-      allow write: if false; // Admin only
+    }
+
+    // Sessions
+    match /sessions/{sessionId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Quizzes
+    match /quizzes/{quizId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
   }
 }
@@ -220,60 +209,38 @@ storage/
 
 ```typescript
 // Videos by topic and difficulty
-videos: topics, difficulty
+videos: topicIds, metadata.uploadDate
 
 // Videos by popularity
-videos: topics, views
+videos: topicIds, engagement.views
 
-// User progress by date
-users/{userId}/progress: lastWatched
+// Sessions by user and status
+sessions: userId, config.status
 
-// Topic progress by mastery
-users/{userId}/topicProgress: masteryLevel
+// User quizzes by date
+quizzes: userId, metadata.generatedAt
 ```
-
-## Caching Strategy
-
-### Client-Side Caching
-
-- Cache video metadata in local storage
-- Store frequently accessed user data in memory
-- Implement offline persistence for progress tracking
-- Use Firebase Storage caching for video content
-
-### Server-Side Caching
-
-- Implement caching for frequently accessed videos
-- Cache AI-generated content
-- Cache user statistics and leaderboards
-
-## Data Access Patterns
-
-### Common Queries
-
-- Fetch feed videos by topic and difficulty
-- Get user's learning progress
-- Retrieve topic mastery levels
-- Access video metadata and summaries
-
-### Write Patterns
-
-- Update user progress after watching videos
-- Track topic mastery
-- Store quiz results
-- Update engagement metrics
 
 ## Performance Considerations
 
 1. Implement pagination for video feeds
 2. Use composite indexes for complex queries
 3. Optimize data structure for common access patterns
-4. Implement proper cache invalidation
+4. Cache frequently accessed data
 5. Monitor database usage and costs
 
-## Backup Strategy
+## Data Access Patterns
 
-1. Regular Firestore backups
-2. Export user data periodically
-3. Backup media files in Storage
-4. Maintain data consistency across backups
+### Common Queries
+
+- Fetch videos by topic
+- Get user's active/completed sessions
+- Retrieve quiz results
+- Access video metadata
+
+### Write Patterns
+
+- Create new learning sessions
+- Update session progress
+- Store quiz responses
+- Update video engagement metrics

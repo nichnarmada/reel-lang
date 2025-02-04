@@ -1,35 +1,50 @@
-# LearnLoop: Learn What Interests You
+# TimedTutor: Time-Boxed Learning Through Short Videos
 
 ## Vision
 
-LearnLoop combines short-form video entertainment with personalized learning. Users select topics they're passionate about, consume curated video content, and reinforce learning through AI-generated quizzes.
+TimedTutor revolutionizes learning by combining structured time management with engaging short-form video content. Users set learning sessions, consume curated content, and validate knowledge through AI-generated quizzes.
 
-## Project Scope
+## Core Features
 
-### Week 1: Video Platform
+### Time Management
 
-- Topic-based content feeds
-- Interest selection system
-- Basic engagement features
+- Customizable session lengths (5/10/15 mins)
+- Visual session progress
+- Pause/resume functionality
+- Session scheduling
+
+### Content Delivery
+
+- Topic-based video feed
+- Continuous playback
+- Topic suggestions
+- Save/share functionality
+
+### Learning Validation
+
+- Post-session quizzes
 - Progress tracking
-
-### Week 2: AI Learning
-
-- Content comprehension quizzes
-- Topic mastery tracking
-- Personalized recommendations
-- Learning analytics
+- Knowledge gap analysis
+- Topic mastery metrics
 
 ## Target Users
 
-- Knowledge seekers (16-45)
-- Interest-driven learners
-- Short attention span preference
-- Continuous learning mindset
+- Students seeking focused study sessions
+- Professionals pursuing continuous learning
+- Knowledge enthusiasts with limited time
+- People struggling with learning consistency
 
-## Key Features
+## Value Proposition
 
-- Multi-topic content feed
-- Interest-based filtering
-- Quiz-based validation
-- Progress visualization
+- Structured learning in bite-sized sessions
+- Active engagement through short videos
+- Immediate knowledge validation
+- Personalized learning paths
+- Progress tracking across topics
+
+## Technical Foundation
+
+- React Native + Expo
+- Firebase backend
+- Gemini AI for quiz generation
+- Analytics for learning insights

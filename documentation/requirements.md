@@ -1,55 +1,83 @@
-# Week 1 Requirements
+# Requirements
 
-## Core Implementation
+## Week 1: Core Implementation
 
-- [ ] User Onboarding
+### User Flow
 
-  - [ ] Interest selection
-  - [ ] Topic preferences
-  - [ ] Initial feed setup
+- [ ] Topic Input & Session Setup
 
-- [ ] Video Feed
+  - Topic search/selection
+  - Timer selection (5/10/15 mins)
+  - Topic suggestions system
+  - Session configuration
 
-  - [ ] Topic-based filtering
-  - [ ] Video playback
-  - [ ] Save functionality
+- [ ] Video Feed System
 
-- [ ] Progress Tracking
-  - [ ] Watch history
-  - [ ] Learning streaks
-  - [ ] Basic analytics
+  - Topic-filtered content
+  - Session timer display
+  - Progress indicator
+  - Video player controls
+  - Save/share functionality
 
-## Additional Features
+- [ ] Session Management
+  - Timer countdown
+  - Pause/resume
+  - Session completion handler
+  - History tracking
 
-- [ ] Social sharing
-- [ ] Custom playlists
-- [ ] Topic discovery
-- [ ] Advanced filters
+### Data Management
 
-# Week 2 Requirements
+- [ ] User Preferences
 
-## Core AI Features
+  - Topic interests
+  - Session preferences
+  - Watch history
 
-- [ ] Quiz Generation
+- [ ] Basic Analytics
+  - Session completion rates
+  - Topic engagement
+  - Time spent learning
 
-  - [ ] Content analysis
-  - [ ] Question creation
-  - [ ] Answer validation
+### Additional Features
 
-- [ ] Learning Analytics
+- [ ] Topic discovery system
+- [ ] Video bookmarking
+- [ ] Session scheduling
+- [ ] Basic achievements
 
-  - [ ] Topic mastery tracking
-  - [ ] Progress visualization
-  - [ ] Performance insights
+## Week 2: AI Integration
+
+### Quiz Generation
+
+- [ ] Content Analysis
+
+  - Video transcript processing
+  - Key concept extraction
+  - Topic classification
+
+- [ ] Quiz System
+  - Question generation
+  - Answer validation
+  - Results tracking
+  - Knowledge gap identification
+
+### Personalization
+
+- [ ] User Analysis
+
+  - Learning patterns
+  - Topic preferences
+  - Performance tracking
+  - Session optimization
 
 - [ ] Content Recommendations
-  - [ ] User preference analysis
-  - [ ] Difficulty matching
-  - [ ] Topic relationships
+  - Difficulty matching
+  - Topic suggestions
+  - Learning paths
 
-## Additional Features
+### Additional AI Features
 
-- [ ] Study summaries
-- [ ] Learning paths
-- [ ] Cross-topic insights
+- [ ] Session summaries
+- [ ] Topic connections
+- [ ] Performance insights
 - [ ] Adaptive difficulty
