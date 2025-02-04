@@ -1,53 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from "react"
+import { firestore } from "../utils/firebase/config"
+import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
+import { Topic } from "../types/topic"
 import { useAuth } from "./auth"
-import {
-  Topic,
-  UserTopicPreferences,
-  TopicPath,
-  DifficultyLevel,
-  LearningGoal,
-  RelatedContent,
-  TopicSuggestion,
-} from "../types/topic"
-import {
-  getTopics,
-  getTopicPaths,
-  getUserTopicPreferences,
-  updateUserTopicPreferences,
-  getRelatedContent,
-  getTopicSuggestions,
-} from "../services/topics"
 
 interface TopicsContextType {
   topics: Topic[]
-  topicPaths: TopicPath[]
-  userPreferences: UserTopicPreferences | null
-  relatedContent: RelatedContent[]
-  suggestions: TopicSuggestion[]
-  trendingTopics: Topic[]
-  communityExperts: { topicId: string; count: number }[]
   loading: boolean
   error: string | null
-
-  // Learning Goals Management
-  addLearningGoal: (
-    goal: Omit<LearningGoal, "id" | "userId" | "createdAt" | "updatedAt">
-  ) => Promise<void>
-  updateLearningGoal: (
-    goalId: string,
-    updates: Partial<LearningGoal>
-  ) => Promise<void>
-  removeLearningGoal: (goalId: string) => Promise<void>
-
-  // Topic Management
-  selectTopic: (topicId: string, goalId?: string) => Promise<void>
-  unselectTopic: (topicId: string) => Promise<void>
-
-  // Data Refresh
+  searchTopics: (query: string) => Promise<Topic[]>
+  getTopicsByCategory: (category: string) => Promise<Topic[]>
+  getTrendingTopics: () => Promise<Topic[]>
   refreshTopics: () => Promise<void>
-  refreshRelatedContent: () => Promise<void>
-  getTrendingTopics: () => Promise<void>
-  getCommunityExperts: () => Promise<void>
 }
 
 const TopicsContext = createContext<TopicsContextType | undefined>(undefined)
@@ -55,244 +19,103 @@ const TopicsContext = createContext<TopicsContextType | undefined>(undefined)
 export function TopicsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [topics, setTopics] = useState<Topic[]>([])
-  const [topicPaths, setTopicPaths] = useState<TopicPath[]>([])
-  const [userPreferences, setUserPreferences] =
-    useState<UserTopicPreferences | null>(null)
-  const [relatedContent, setRelatedContent] = useState<RelatedContent[]>([])
-  const [suggestions, setSuggestions] = useState<TopicSuggestion[]>([])
-  const [trendingTopics, setTrendingTopics] = useState<Topic[]>([])
-  const [communityExperts, setCommunityExperts] = useState<
-    { topicId: string; count: number }[]
-  >([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch initial data
+  // Fetch all topics on mount or when user changes
   useEffect(() => {
     if (user) {
       refreshTopics()
     }
   }, [user])
 
+  // Refresh topics
   const refreshTopics = async () => {
+    setLoading(true)
+    setError(null)
     try {
-      setLoading(true)
-      setError(null)
+      const topicsSnapshot = await firestore()
+        .collection(FIREBASE_COLLECTIONS.TOPICS)
+        .get()
 
-      const [topicsData, pathsData, preferencesData] = await Promise.all([
-        getTopics(),
-        getTopicPaths(),
-        user ? getUserTopicPreferences(user.uid) : null,
-      ])
+      const topicsData = topicsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Topic[]
 
       setTopics(topicsData)
-      setTopicPaths(pathsData)
-      setUserPreferences(preferencesData)
-
-      if (preferencesData?.learningGoals.length) {
-        await refreshRelatedContent()
-      }
-
-      await getTrendingTopics()
-      await getCommunityExperts()
-    } catch (error) {
-      console.error("Error refreshing topics:", error)
-      setError("Failed to load topics")
+    } catch (err) {
+      console.error("Error fetching topics:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch topics")
     } finally {
       setLoading(false)
     }
   }
 
-  const refreshRelatedContent = async () => {
-    if (!user || !userPreferences) return
-
+  // Search topics by query
+  const searchTopics = async (query: string): Promise<Topic[]> => {
     try {
-      const [contentData, suggestionsData] = await Promise.all([
-        getRelatedContent(userPreferences.learningGoals.map((g) => g.id)),
-        getTopicSuggestions(userPreferences.learningGoals.map((g) => g.id)),
-      ])
+      const searchTerms = query.toLowerCase().split(" ")
+      const topicsSnapshot = await firestore()
+        .collection(FIREBASE_COLLECTIONS.TOPICS)
+        .where("searchTerms", "array-contains-any", searchTerms)
+        .get()
 
-      setRelatedContent(contentData)
-      setSuggestions(suggestionsData)
-    } catch (error) {
-      console.error("Error refreshing related content:", error)
-      setError("Failed to load related content")
+      return topicsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Topic[]
+    } catch (err) {
+      console.error("Error searching topics:", err)
+      throw err
     }
   }
 
-  const addLearningGoal = async (
-    goal: Omit<LearningGoal, "id" | "userId" | "createdAt" | "updatedAt">
-  ) => {
-    if (!user || !userPreferences) return
-
+  // Get topics by category
+  const getTopicsByCategory = async (category: string): Promise<Topic[]> => {
     try {
-      const updatedPreferences = {
-        ...userPreferences,
-        learningGoals: [
-          ...userPreferences.learningGoals,
-          {
-            ...goal,
-            id: Date.now().toString(), // Temporary ID, should be generated by backend
-            userId: user.uid,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ],
-      }
+      const topicsSnapshot = await firestore()
+        .collection(FIREBASE_COLLECTIONS.TOPICS)
+        .where("category", "==", category)
+        .get()
 
-      await updateUserTopicPreferences(user.uid, updatedPreferences)
-      setUserPreferences(updatedPreferences)
-      await refreshRelatedContent()
-    } catch (error) {
-      console.error("Error adding learning goal:", error)
-      setError("Failed to add learning goal")
+      return topicsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Topic[]
+    } catch (err) {
+      console.error("Error fetching topics by category:", err)
+      throw err
     }
   }
 
-  const updateLearningGoal = async (
-    goalId: string,
-    updates: Partial<LearningGoal>
-  ) => {
-    if (!user || !userPreferences) return
-
+  // Get trending topics
+  const getTrendingTopics = async (): Promise<Topic[]> => {
     try {
-      const updatedPreferences = {
-        ...userPreferences,
-        learningGoals: userPreferences.learningGoals.map((goal) =>
-          goal.id === goalId
-            ? { ...goal, ...updates, updatedAt: new Date() }
-            : goal
-        ),
-      }
+      const topicsSnapshot = await firestore()
+        .collection(FIREBASE_COLLECTIONS.TOPICS)
+        .orderBy("popularity", "desc")
+        .limit(10)
+        .get()
 
-      await updateUserTopicPreferences(user.uid, updatedPreferences)
-      setUserPreferences(updatedPreferences)
-      await refreshRelatedContent()
-    } catch (error) {
-      console.error("Error updating learning goal:", error)
-      setError("Failed to update learning goal")
-    }
-  }
-
-  const removeLearningGoal = async (goalId: string) => {
-    if (!user || !userPreferences) return
-
-    try {
-      const updatedPreferences = {
-        ...userPreferences,
-        learningGoals: userPreferences.learningGoals.filter(
-          (goal) => goal.id !== goalId
-        ),
-        selectedTopics: userPreferences.selectedTopics.filter(
-          (topic) => topic.goalId !== goalId
-        ),
-      }
-
-      await updateUserTopicPreferences(user.uid, updatedPreferences)
-      setUserPreferences(updatedPreferences)
-      await refreshRelatedContent()
-    } catch (error) {
-      console.error("Error removing learning goal:", error)
-      setError("Failed to remove learning goal")
-    }
-  }
-
-  const selectTopic = async (topicId: string, goalId?: string) => {
-    if (!user || !userPreferences) return
-
-    try {
-      const updatedPreferences = {
-        ...userPreferences,
-        selectedTopics: [
-          ...userPreferences.selectedTopics,
-          {
-            topicId,
-            goalId,
-            difficulty: "beginner" as DifficultyLevel,
-            addedAt: new Date(),
-          },
-        ],
-      }
-
-      await updateUserTopicPreferences(user.uid, updatedPreferences)
-      setUserPreferences(updatedPreferences)
-      await refreshRelatedContent()
-    } catch (error) {
-      console.error("Error selecting topic:", error)
-      setError("Failed to select topic")
-    }
-  }
-
-  const unselectTopic = async (topicId: string) => {
-    if (!user || !userPreferences) return
-
-    try {
-      const updatedPreferences = {
-        ...userPreferences,
-        selectedTopics: userPreferences.selectedTopics.filter(
-          (topic) => topic.topicId !== topicId
-        ),
-      }
-
-      await updateUserTopicPreferences(user.uid, updatedPreferences)
-      setUserPreferences(updatedPreferences)
-      await refreshRelatedContent()
-    } catch (error) {
-      console.error("Error unselecting topic:", error)
-      setError("Failed to unselect topic")
-    }
-  }
-
-  const getTrendingTopics = async () => {
-    try {
-      // Get topics sorted by trendingScore
-      const trending = topics
-        .filter((t) => t.trendingScore !== undefined)
-        .sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0))
-        .slice(0, 5)
-      setTrendingTopics(trending)
-    } catch (error) {
-      console.error("Error getting trending topics:", error)
-      setError("Failed to load trending topics")
-    }
-  }
-
-  const getCommunityExperts = async () => {
-    try {
-      // Get topics with expert counts
-      const experts = topics
-        .filter((t) => t.expertCount !== undefined)
-        .map((t) => ({
-          topicId: t.id,
-          count: t.expertCount || 0,
-        }))
-        .sort((a, b) => b.count - a.count)
-      setCommunityExperts(experts)
-    } catch (error) {
-      console.error("Error getting community experts:", error)
-      setError("Failed to load community experts")
+      return topicsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Topic[]
+    } catch (err) {
+      console.error("Error fetching trending topics:", err)
+      throw err
     }
   }
 
   const value = {
     topics,
-    topicPaths,
-    userPreferences,
-    relatedContent,
-    suggestions,
-    trendingTopics,
-    communityExperts,
     loading,
     error,
-    addLearningGoal,
-    updateLearningGoal,
-    removeLearningGoal,
-    selectTopic,
-    unselectTopic,
-    refreshTopics,
-    refreshRelatedContent,
+    searchTopics,
+    getTopicsByCategory,
     getTrendingTopics,
-    getCommunityExperts,
+    refreshTopics,
   }
 
   return (

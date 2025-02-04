@@ -11,46 +11,20 @@ import {
   Image,
 } from "react-native"
 import { router } from "expo-router"
-import { useTopics } from "../../contexts/topics"
 import { useAuth } from "../../contexts/auth"
+import { useTopics } from "../../contexts/topics"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
-import {
-  Search,
-  X,
-  BookOpen,
-  Code,
-  History,
-  Palette,
-  Brain,
-  Music,
-  Globe,
-  Shuffle,
-  Camera,
-  Dumbbell,
-  ChefHat,
-  Leaf,
-  FlaskConical,
-} from "lucide-react-native"
-import { LinearGradient } from "expo-linear-gradient"
-import { RelatedContent, TopicSuggestion } from "../../types/topic"
+import { Search, Shuffle } from "lucide-react-native"
+import { Topic } from "../../types/topic"
+import { allTopics } from "@/constants/topics"
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
-  const {
-    topics,
-    userPreferences,
-    relatedContent,
-    suggestions,
-    loading,
-    error,
-    addLearningGoal,
-    removeLearningGoal,
-    selectTopic,
-    refreshTopics,
-  } = useTopics()
+  const { topics, loading, error, searchTopics, refreshTopics } = useTopics()
 
   const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<Topic[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -64,21 +38,6 @@ export default function DiscoverScreen() {
     return newArray
   }
 
-  // All possible topics
-  const allTopics = [
-    { id: "programming", title: "Programming", icon: Code, color: "#FF6B6B" },
-    { id: "history", title: "History", icon: History, color: "#4ECDC4" },
-    { id: "art", title: "Art & Design", icon: Palette, color: "#9D50BB" },
-    { id: "psychology", title: "Psychology", icon: Brain, color: "#45B7D1" },
-    { id: "music", title: "Music", icon: Music, color: "#96C93D" },
-    { id: "languages", title: "Languages", icon: Globe, color: "#FF9A8B" },
-    { id: "photography", title: "Photography", icon: Camera, color: "#FF85A1" },
-    { id: "fitness", title: "Fitness", icon: Dumbbell, color: "#45B7AF" },
-    { id: "cooking", title: "Cooking", icon: ChefHat, color: "#FFA07A" },
-    { id: "nature", title: "Nature", icon: Leaf, color: "#98FB98" },
-    { id: "science", title: "Science", icon: FlaskConical, color: "#87CEEB" },
-  ]
-
   // State for suggested topics
   const [suggestedTopics, setSuggestedTopics] = useState(() =>
     shuffleArray(allTopics).slice(0, 6)
@@ -87,6 +46,26 @@ export default function DiscoverScreen() {
   // Function to get new suggestions
   const refreshSuggestions = () => {
     setSuggestedTopics(shuffleArray(allTopics).slice(0, 6))
+  }
+
+  // Function to handle topic selection
+  const handleTopicSelect = (topic: string) => {
+    // Convert topic title to id format (lowercase, hyphenated)
+    const topicId = topic.toLowerCase().replace(/\s+/g, "-")
+    router.push(`/topic/${topicId}`)
+  }
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return
+    try {
+      const results = await searchTopics(searchQuery.trim())
+      setSearchResults(results)
+    } catch (err) {
+      console.error("Error searching topics:", err)
+      setLoadError(
+        err instanceof Error ? err.message : "Failed to search topics"
+      )
+    }
   }
 
   const onRefresh = async () => {
@@ -108,34 +87,6 @@ export default function DiscoverScreen() {
       onRefresh()
     }
   }, [user])
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return
-    try {
-      await addLearningGoal({
-        title: searchQuery.trim(),
-        tags: [], // We can enhance this with AI tag suggestions later
-      })
-      setSearchQuery("")
-    } catch (err) {
-      console.error("Error adding learning goal:", err)
-      setLoadError(
-        err instanceof Error ? err.message : "Failed to add learning goal"
-      )
-    }
-  }
-
-  const handleTopicSelect = async (topic: string) => {
-    try {
-      await addLearningGoal({
-        title: topic,
-        tags: [topic.toLowerCase()],
-      })
-    } catch (err) {
-      console.error("Error adding topic:", err)
-      setLoadError(err instanceof Error ? err.message : "Failed to add topic")
-    }
-  }
 
   if (loading) {
     return (
@@ -229,99 +180,13 @@ export default function DiscoverScreen() {
               onPress={refreshSuggestions}
               accessibilityLabel="Show different topics"
             >
-              <Text style={styles.shuffleText}>
-                {(userPreferences?.learningGoals ?? []).length > 0
-                  ? "Expand your knowledge"
-                  : "Discover something new"}
-              </Text>
+              <Text style={styles.shuffleText}>Discover something new</Text>
               <View style={styles.shuffleIconContainer}>
                 <Shuffle size={16} color="#666" />
               </View>
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Current Learning Goals */}
-        {(userPreferences?.learningGoals ?? []).length > 0 && (
-          <View style={[styles.section, styles.centeredSection]}>
-            <Text style={styles.sectionTitle}>Your Learning Goals</Text>
-            <View style={styles.goalsList}>
-              {userPreferences?.learningGoals?.map((goal) => (
-                <View key={goal.id} style={styles.goalBadge}>
-                  <Text style={styles.goalBadgeText}>{goal.title}</Text>
-                  <TouchableOpacity
-                    onPress={() => removeLearningGoal(goal.id)}
-                    style={styles.removeButton}
-                  >
-                    <X size={16} color="#8a2be2" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Recommended Content Section */}
-        {relatedContent.length > 0 && (
-          <View style={[styles.section, styles.centeredSection]}>
-            <Text style={styles.sectionTitle}>Recommended For You</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.contentScrollContainer}
-            >
-              {relatedContent.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.contentCard}
-                  onPress={() => {
-                    if (item.type === "video")
-                      router.push(`/reels?videoId=${item.id}`)
-                    else router.push(`/topics/${item.id}`)
-                  }}
-                >
-                  {item.thumbnail ? (
-                    <Image
-                      source={{ uri: item.thumbnail }}
-                      style={styles.contentImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.contentPlaceholder}>
-                      <BookOpen size={24} color="#666" />
-                    </View>
-                  )}
-                  <Text style={styles.contentTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Related Topics Section */}
-        {suggestions.length > 0 && (
-          <View style={[styles.section, styles.centeredSection]}>
-            <Text style={styles.sectionTitle}>You Might Also Like</Text>
-            <View style={styles.topicsContainer}>
-              {suggestions.map((suggestion) => (
-                <TouchableOpacity
-                  key={suggestion.topicId}
-                  style={styles.topicButton}
-                  onPress={() =>
-                    selectTopic(suggestion.topicId, suggestion.basedOn[0].id)
-                  }
-                >
-                  <BookOpen size={16} color="#333" style={styles.topicIcon} />
-                  <Text style={styles.topicText}>
-                    {topics.find((t) => t.id === suggestion.topicId)?.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
       </View>
     </ScrollView>
   )
