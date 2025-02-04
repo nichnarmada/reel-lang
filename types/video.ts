@@ -1,10 +1,12 @@
+import { DifficultyLevel } from "./topic"
+
 export interface Video {
   id: string
   url: string
   thumbnailUrl: string
   caption: string
   language: string
-  proficiencyLevel: "beginner" | "intermediate" | "advanced"
+  proficiencyLevel: DifficultyLevel
   duration: number
   metadata: {
     title: string

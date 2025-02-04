@@ -8,45 +8,41 @@ import {
   FlatList,
 } from "react-native"
 import { router } from "expo-router"
-
-// Example topics - these would come from Firestore in production
-const TOPICS = [
-  {
-    id: "1",
-    name: "Technology",
-    icon: "💻",
-    description: "Latest in tech and computing",
-  },
-  {
-    id: "2",
-    name: "Science",
-    icon: "🔬",
-    description: "Discoveries and experiments",
-  },
-  {
-    id: "3",
-    name: "History",
-    icon: "📚",
-    description: "Past events and civilizations",
-  },
-  {
-    id: "4",
-    name: "Arts",
-    icon: "🎨",
-    description: "Creative expressions and culture",
-  },
-  // Add more topics...
-]
+import { useTopics } from "../../contexts/topics"
+import { LoadingSpinner } from "../../components/LoadingSpinner"
+import { ErrorMessage } from "../../components/ErrorMessage"
 
 export default function DiscoverScreen() {
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const {
+    topics,
+    featuredTopics,
+    topicPaths,
+    userPreferences,
+    loading,
+    error,
+    selectTopic,
+    unselectTopic,
+  } = useTopics()
 
-  const toggleTopic = (topicId: string) => {
-    setSelectedTopics((prev) =>
-      prev.includes(topicId)
-        ? prev.filter((id) => id !== topicId)
-        : [...prev, topicId]
+  console.log("Featured Topics:", featuredTopics)
+
+  const toggleTopic = async (topicId: string) => {
+    const isSelected = userPreferences?.selectedTopics.some(
+      (topic) => topic.topicId === topicId
     )
+    if (isSelected) {
+      await unselectTopic(topicId)
+    } else {
+      await selectTopic(topicId)
+    }
+  }
+
+  if (loading) {
+    return <LoadingSpinner />
+  }
+
+  if (error) {
+    return <ErrorMessage message={error} />
   }
 
   return (
@@ -62,7 +58,7 @@ export default function DiscoverScreen() {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={TOPICS.slice(0, 3)}
+          data={featuredTopics}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.featuredCard}
@@ -81,12 +77,14 @@ export default function DiscoverScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>All Topics</Text>
         <View style={styles.topicsGrid}>
-          {TOPICS.map((topic) => (
+          {topics.map((topic) => (
             <TouchableOpacity
               key={topic.id}
               style={[
                 styles.topicCard,
-                selectedTopics.includes(topic.id) && styles.selectedTopic,
+                userPreferences?.selectedTopics.some(
+                  (t) => t.topicId === topic.id
+                ) && styles.selectedTopic,
               ]}
               onPress={() => toggleTopic(topic.id)}
             >
@@ -103,12 +101,13 @@ export default function DiscoverScreen() {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={TOPICS.slice(0, 3)}
+          data={topicPaths}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.pathCard}>
-              <Text style={styles.pathIcon}>{item.icon}</Text>
-              <Text style={styles.pathTitle}>{`Master ${item.name}`}</Text>
-              <Text style={styles.pathDetails}>5 videos • 3 quizzes</Text>
+              <Text style={styles.pathTitle}>{item.name}</Text>
+              <Text style={styles.pathDetails}>
+                {item.videoCount} videos • {item.quizCount} quizzes
+              </Text>
             </TouchableOpacity>
           )}
           keyExtractor={(item) => `path-${item.id}`}
@@ -204,10 +203,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-  },
-  pathIcon: {
-    fontSize: 24,
-    marginBottom: 8,
   },
   pathTitle: {
     fontSize: 16,
