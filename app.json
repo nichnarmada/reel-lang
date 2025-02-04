@@ -11,7 +11,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.reellang.app",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsArbitraryLoadsInWebContent": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -48,7 +54,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static"
+            "useFrameworks": "static",
+            "deploymentTarget": "15.1"
           }
         }
       ],
@@ -58,8 +65,12 @@
           "iosUrlScheme": "com.googleusercontent.apps.1000000000000-0000000000000000000000000000000000000000000000000000000000000000"
         }
       ],
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      [
+        "@react-native-firebase/app",
+        {
+          "version": "18.7.3"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

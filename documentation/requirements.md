@@ -2,7 +2,7 @@
 
 ## Core Implementation
 
-- [ ] Firebase Authentication setup
+- [x] Firebase Authentication setup
 - [ ] Video feed implementation
   - [ ] Vertical scroll
   - [ ] Auto-play

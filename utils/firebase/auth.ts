@@ -1,10 +1,11 @@
 import auth from "@react-native-firebase/auth"
 import { GoogleSignin } from "@react-native-google-signin/google-signin"
 
-// Initialize Google Sign-In
+// Initialize Google Sign-In with the correct webClientId
+// This ID should be the one that ends with .apps.googleusercontent.com from your google-services.json
 GoogleSignin.configure({
   webClientId:
-    "341307047865-9uhnp8vvuafb7d0o2l04av5gvliu9vcb.apps.googleusercontent.com",
+    "341307047865-hrn6u34qthf8rijc34qq5n28efmckoeu.apps.googleusercontent.com", // client_id with client_type 3
 })
 
 export interface AuthError {
@@ -45,14 +46,21 @@ export const signUpWithEmail = async (email: string, password: string) => {
 export const signInWithGoogle = async () => {
   try {
     // Check if your device supports Google Play
-    await GoogleSignin.hasPlayServices()
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
     // Get the users ID token
-    const { idToken } = await GoogleSignin.signIn()
-    // Create a Google credential
+    const signInResult = await GoogleSignin.signIn()
+
+    // Get the ID token
+    const idToken = signInResult.data?.idToken
+    if (!idToken) {
+      throw new Error("No ID token found")
+    }
+
+    // Create a Google credential with the token
     const googleCredential = auth.GoogleAuthProvider.credential(idToken)
+
     // Sign-in with credential
-    const userCredential = await auth().signInWithCredential(googleCredential)
-    return userCredential.user
+    return auth().signInWithCredential(googleCredential)
   } catch (error: any) {
     throw {
       code: error.code,
