@@ -43,6 +43,12 @@
           <string>exp+reel-lang</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.1000000000000-0000000000000000000000000000000000000000000000000000000000000000</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
@@ -53,8 +59,8 @@
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
-      <false/>
-      <key>NSAllowsLocalNetworking</key>
+      <true/>
+      <key>NSAllowsArbitraryLoadsInWebContent</key>
       <true/>
     </dict>
     <key>NSUserActivityTypes</key>
