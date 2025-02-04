@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Topics collection - readable by all authenticated users, writable by admin only
+    match /topics/{topicId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only via Firebase Console or Admin SDK
+    }
+
+    // User topic preferences - users can only read/write their own preferences
+    match /userTopicPreferences/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Topic progress - users can only read/write their own progress
+    match /topicProgress/{progressId} {
+      allow read, write: if request.auth != null && 
+        progressId.matches(request.auth.uid + '_.*');
+    }
+
+    // Featured topics - readable by all authenticated users, writable by admin
+    match /featuredTopics/{topicId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only
+    }
+
+    // Topic paths - readable by all authenticated users, writable by admin
+    match /topicPaths/{pathId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only
+    }
+  }
+} 

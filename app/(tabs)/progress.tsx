@@ -8,24 +8,29 @@ import {
   FlatList,
 } from "react-native"
 import { LineChart } from "lucide-react-native"
+import { TopicProgress } from "../../types/topic"
 
 // Example data - would come from Firestore in production
-const TOPIC_PROGRESS = [
+const TOPIC_PROGRESS: TopicProgress[] = [
   {
-    id: "1",
-    topic: "Technology",
-    mastery: 75,
+    topicId: "tech_topic",
+    userId: "user123",
+    masteryLevel: 75,
     videosWatched: 12,
     quizzesTaken: 5,
     averageScore: 85,
+    lastActivity: new Date(),
+    achievements: [],
   },
   {
-    id: "2",
-    topic: "Science",
-    mastery: 45,
+    topicId: "science_topic",
+    userId: "user123",
+    masteryLevel: 45,
     videosWatched: 8,
     quizzesTaken: 3,
     averageScore: 70,
+    lastActivity: new Date(),
+    achievements: [],
   },
   // Add more topics...
 ]
@@ -49,16 +54,18 @@ const RECENT_ACHIEVEMENTS = [
 ]
 
 export default function ProgressScreen() {
-  const renderTopicProgress = ({ item }) => (
+  const renderTopicProgress = ({ item }: { item: TopicProgress }) => (
     <TouchableOpacity style={styles.topicCard}>
       <View style={styles.topicHeader}>
-        <Text style={styles.topicTitle}>{item.topic}</Text>
-        <Text style={styles.masteryLabel}>{item.mastery}% Mastery</Text>
+        <Text style={styles.topicTitle}>{item.topicId}</Text>
+        <Text style={styles.masteryLabel}>{item.masteryLevel}% Mastery</Text>
       </View>
 
       {/* Progress Bar */}
       <View style={styles.progressBarContainer}>
-        <View style={[styles.progressBar, { width: `${item.mastery}%` }]} />
+        <View
+          style={[styles.progressBar, { width: `${item.masteryLevel}%` }]}
+        />
       </View>
 
       <View style={styles.statsContainer}>
@@ -107,7 +114,7 @@ export default function ProgressScreen() {
         <FlatList
           data={TOPIC_PROGRESS}
           renderItem={renderTopicProgress}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.topicId}
           scrollEnabled={false}
         />
       </View>

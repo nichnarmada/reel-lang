@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "featuredTopics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "featuredUntil", "order": "ASCENDING" },
+        { "fieldPath": "priority", "order": "DESCENDING" }
+      ]
+    }
+  ]
+}
