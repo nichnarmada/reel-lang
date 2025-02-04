@@ -1,27 +1,35 @@
-# ReelLang: Language Learning Through Short Videos
+# LearnLoop: Learn What Interests You
 
-## Overview
+## Vision
 
-ReelLang combines TikTok-style short videos with Duolingo-inspired learning mechanics. Users learn languages through engaging video content and AI-enhanced practice activities.
+LearnLoop combines short-form video entertainment with personalized learning. Users select topics they're passionate about, consume curated video content, and reinforce learning through AI-generated quizzes.
 
-## Week 1: Core Video Platform
+## Project Scope
 
-- Video feed with language filtering
-- Basic user interactions
+### Week 1: Video Platform
+
+- Topic-based content feeds
+- Interest selection system
+- Basic engagement features
 - Progress tracking
 
-## Week 2: AI Learning Features
+### Week 2: AI Learning
 
-- Vocabulary extraction
-- Personalized flashcards
+- Content comprehension quizzes
+- Topic mastery tracking
+- Personalized recommendations
 - Learning analytics
 
 ## Target Users
 
-Language learners seeking engaging, bite-sized content for daily practice.
+- Knowledge seekers (16-45)
+- Interest-driven learners
+- Short attention span preference
+- Continuous learning mindset
 
-## Goals
+## Key Features
 
-1. Create seamless video consumption experience
-2. Implement effective learning mechanics
-3. Leverage AI for personalized learning
+- Multi-topic content feed
+- Interest-based filtering
+- Quiz-based validation
+- Progress visualization

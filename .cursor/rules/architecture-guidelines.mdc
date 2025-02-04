@@ -9,12 +9,9 @@ globs:
 ```
 app/                   # Expo Router app directory
 ├── (auth)/            # Authentication group
-│   ├── login.tsx      # Login screen
-│   └── register.tsx   # Register screen
+│   └── 
 ├── (tabs)/            # Main tab navigation group
-│   ├── feed/          # Feed tab and nested routes
-│   ├── learn/         # Learning tab and nested routes
-│   └── profile/       # Profile tab and nested routes
+│   └── 
 ├── _layout.tsx        # Root layout
 └── index.tsx          # Entry redirect
 

@@ -2,7 +2,7 @@
 description: Database guidelines of the current project
 globs: 
 ---
-# ReelLang Database Guidelines
+# LearnLoop Database Guidelines
 
 Remember to refer to the complete database structure in `database-structure.md` for the full data model.
 
@@ -12,12 +12,13 @@ Remember to refer to the complete database structure in `database-structure.md` 
 
    - Use camelCase for collection names
    - Keep names descriptive and concise
-   - Example: `users`, `userProgress`, `videoContent`
+   - Example: `users`, `topics`, `userProgress`
 2. **Document IDs**
 
    - Use Firebase auto-generated IDs unless there's a specific need for custom IDs
    - For user documents, use Firebase Auth UID
    - For videos, use a meaningful prefix: `vid_${autoId}`
+   - For topics, use slugified names: `topic_machine-learning`
 3. **Field Naming**
 
    - Use camelCase for field names
@@ -30,9 +31,10 @@ Remember to refer to the complete database structure in `database-structure.md` 
 
    ```typescript
    // ✅ DO: Use specific queries
-   const userVideos = await db
-     .collection('progress')
-     .where('userId', '==', currentUserId)
+   const topicVideos = await db
+     .collection('videos')
+     .where('topics', 'array-contains', topicId)
+     .orderBy('difficulty')
      .limit(10)
      .get()
 
@@ -45,12 +47,12 @@ Remember to refer to the complete database structure in `database-structure.md` 
    // ✅ DO: Use batch writes for related updates
    const batch = db.batch()
    batch.update(userRef, { points: increment(10) })
-   batch.set(progressRef, { completed: true })
+   batch.update(topicProgressRef, { masteryLevel: increment(5) })
    await batch.commit()
 
    // ❌ DON'T: Use multiple separate writes
    await userRef.update({ points: increment(10) })
-   await progressRef.set({ completed: true })
+   await topicProgressRef.update({ masteryLevel: increment(5) })
    ```
 
 ## Storage Guidelines
@@ -60,8 +62,8 @@ Remember to refer to the complete database structure in `database-structure.md` 
    ```typescript
    // ✅ DO: Use structured paths
    storage/videos/${videoId}/source.mp4
-   storage/videos/${videoId}/thumbnails/small.jpg
-   storage/videos/${videoId}/captions/en.vtt
+   storage/videos/${videoId}/thumbnail.jpg
+   storage/topics/${topicId}/icon.png
 
    // ❌ DON'T: Use flat structure
    storage/video_123.mp4
@@ -71,7 +73,7 @@ Remember to refer to the complete database structure in `database-structure.md` 
 
    - Use lowercase for filenames
    - Use hyphens for spaces
-   - Include purpose in filename: `thumbnail-small.jpg`
+   - Include purpose in filename: `thumbnail-hd.jpg`
 
 ## Data Validation
 
@@ -79,24 +81,25 @@ Remember to refer to the complete database structure in `database-structure.md` 
 
    ```typescript
    // ✅ DO: Define and use TypeScript interfaces
-   interface UserProgress {
-     videoId: string
-     completedAt: Timestamp
-     score: number
+   interface TopicProgress {
+     topicId: string
+     masteryLevel: number
+     videosWatched: number
+     lastActivity: Timestamp
    }
 
    // ❌ DON'T: Use untyped objects
    const progress = { 
-     videoId, 
-     completedAt, 
-     score 
+     topicId, 
+     masteryLevel, 
+     videosWatched 
    }
    ```
 2. **Security Rules**
 
    ```typescript
    // ✅ DO: Write specific security rules
-   match /users/{userId}/progress/{videoId} {
+   match /users/{userId}/topicProgress/{topicId} {
      allow read, write: if request.auth.uid == userId;
    }
 
@@ -114,8 +117,8 @@ Remember to refer to the complete database structure in `database-structure.md` 
    // ✅ DO: Use compound queries with indexes
    const videos = await db
      .collection('videos')
-     .where('language', '==', 'spanish')
-     .where('level', '==', 'beginner')
+     .where('topics', 'array-contains', topicId)
+     .where('difficulty', '==', 'beginner')
      .orderBy('createdAt', 'desc')
      .limit(10)
      .get()
@@ -130,13 +133,14 @@ Remember to refer to the complete database structure in `database-structure.md` 
    // ✅ DO: Denormalize frequently accessed data
    videos/{videoId} {
      title: string
+     topics: string[]  // Denormalized topic names
      creatorName: string  // Denormalized from user
      thumbnailUrl: string
    }
 
    // ❌ DON'T: Rely on multiple queries
    const video = await videoRef.get()
-   const creator = await userRef.get()
+   const topics = await Promise.all(video.topicRefs.map(ref => ref.get()))
    ```
 
 ## Real-time Updates
@@ -148,8 +152,8 @@ Remember to refer to the complete database structure in `database-structure.md` 
    const unsubscribe = db
      .collection('users')
      .doc(userId)
-     .collection('progress')
-     .where('status', '==', 'active')
+     .collection('topicProgress')
+     .where('masteryLevel', '<', 100)
      .onSnapshot(snapshot => {
        // Handle updates
      })
@@ -176,11 +180,11 @@ Remember to refer to the complete database structure in `database-structure.md` 
    ```typescript
    // ✅ DO: Use transactions for dependent updates
    await db.runTransaction(async (transaction) => {
-     const userDoc = await transaction.get(userRef)
-     if (!userDoc.exists) {
-       throw new Error('User not found')
+     const topicDoc = await transaction.get(topicRef)
+     if (!topicDoc.exists) {
+       throw new Error('Topic not found')
      }
-     transaction.update(userRef, { points: userDoc.data().points + 10 })
+     transaction.update(topicRef, { learnerCount: increment(1) })
    })
    ```
 2. **Batch Operations**
@@ -228,10 +232,10 @@ Remember to refer to the complete database structure in `database-structure.md` 
    ```typescript
    // ✅ DO: Document complex queries
    /** 
-    * Fetches active learning sessions for user
-    * Indexed by: userId, status, lastActive
+    * Fetches active learning progress for topic
+    * Indexed by: topicId, masteryLevel, lastActivity
     */
-   const getActiveSessions = async (userId: string) => {
+   const getTopicProgress = async (topicId: string) => {
      // Query implementation
    }
    ```
@@ -239,4 +243,4 @@ Remember to refer to the complete database structure in `database-structure.md` 
 
    - Document all required indexes in `firestore.indexes.json`
    - Include reasoning for each composite index
-   - Keep track of index usage
+   - Keep track of index usage 

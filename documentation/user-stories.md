@@ -1,37 +1,35 @@
-# ReelLang User Stories
-
-## Week 1: Core Features
+# Week 1: Core Features
 
 ### Essential
 
-- [ ] As a learner, I want to watch language learning videos in a continuous feed
-- [ ] As a learner, I want to toggle captions while watching
-- [ ] As a learner, I want to save videos to my study list
-- [ ] As a learner, I want to filter by proficiency level
-- [ ] As a learner, I want to track my daily learning streak
-- [ ] As a learner, I want to mark words/phrases as learned
+- [ ] As a user, I want to select my learning interests
+- [ ] As a user, I want to watch topic-filtered short videos
+- [ ] As a user, I want to save videos for later review
+- [ ] As a user, I want to track my learning streaks
+- [ ] As a user, I want to mark topics as mastered
+- [ ] As a user, I want to switch between different interest feeds
 
 ### Additional
 
-- [ ] As a learner, I want to take vocabulary quizzes
-- [ ] As a learner, I want to share videos with study groups
-- [ ] As a learner, I want to set daily goals
-- [ ] As a learner, I want to view progress statistics
+- [ ] As a user, I want to create custom topic playlists
+- [ ] As a user, I want to share interesting learning videos
+- [ ] As a user, I want topic recommendations
+- [ ] As a user, I want to see my viewing statistics
 
-## Week 2: AI Features
+# Week 2: AI Features
 
 ### Essential
 
-- [ ] As a learner, I want AI-generated flashcards from watched videos
-- [ ] As a learner, I want personalized video recommendations
-- [ ] As a learner, I want auto-generated quizzes from video content
-- [ ] As a learner, I want to track my vocabulary growth
-- [ ] As a learner, I want a customized learning path
-- [ ] As a learner, I want spaced repetition practice sessions
+- [ ] As a user, I want auto-generated quizzes from watched content
+- [ ] As a user, I want to track my topic comprehension
+- [ ] As a user, I want personalized content recommendations
+- [ ] As a user, I want to see my knowledge gaps
+- [ ] As a user, I want learning milestone celebrations
+- [ ] As a user, I want topic mastery assessments
 
 ### Additional
 
-- [ ] As a learner, I want pronunciation feedback
-- [ ] As a learner, I want difficulty predictions for videos
-- [ ] As a learner, I want AI-generated study summaries
-- [ ] As a learner, I want personalized learning insights
+- [ ] As a user, I want content difficulty predictions
+- [ ] As a user, I want learning summaries
+- [ ] As a user, I want cross-topic connections
+- [ ] As a user, I want study reminders

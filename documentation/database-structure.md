@@ -1,4 +1,4 @@
-# ReelLang Database Structure
+# LearnLoop Database Structure
 
 ## Firebase Products Used
 
@@ -13,7 +13,6 @@ We'll utilize the following Firebase products for our database needs:
 ### Firebase Storage
 
 - Video content and thumbnail storage
-- Captions and transcripts
 - User profile images
 
 ### Firebase Authentication
@@ -36,10 +35,9 @@ users/{userId} {
   lastActive: timestamp
 
   // Learning preferences
-  nativeLanguage: string
-  learningLanguages: string[]
-  proficiencyLevels: {
-    [language: string]: 'beginner' | 'intermediate' | 'advanced'
+  interests: string[]  // Topics of interest
+  expertiseLevels: {
+    [topic: string]: 'beginner' | 'intermediate' | 'advanced'
   }
 
   // Gamification
@@ -51,7 +49,6 @@ users/{userId} {
   // Settings
   notifications: boolean
   autoplay: boolean
-  captionsEnabled: boolean
 }
 ```
 
@@ -62,8 +59,8 @@ videos/{videoId} {
   id: string
   title: string
   description: string
-  language: string
-  proficiencyLevel: 'beginner' | 'intermediate' | 'advanced'
+  topics: string[]  // Main topics covered
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
 
   // Media
   videoUrl: string
@@ -73,10 +70,7 @@ videos/{videoId} {
   // Content metadata
   tags: string[]
   categories: string[]
-  transcriptUrl: string
-  captions: {
-    [language: string]: string // URL to captions file
-  }
+  transcriptUrl?: string
 
   // Stats
   views: number
@@ -88,11 +82,8 @@ videos/{videoId} {
   createdAt: timestamp
 
   // Learning metadata
-  vocabularyWords: {
-    word: string
-    translation: string
-    timestamp: number // when word appears in video
-  }[]
+  keyPoints: string[]
+  relatedTopics: string[]
 }
 ```
 
@@ -106,52 +97,56 @@ users/{userId}/progress/{videoId} {
   lastWatched: timestamp
 
   // Learning progress
-  learnedWords: {
-    word: string
-    learned: boolean
-    lastReviewed: timestamp
-    confidence: number // 0-1
-  }[]
-
-  // Quiz results
+  comprehensionScore?: number
   quizzes: {
     quizId: string
     score: number
     completedAt: timestamp
   }[]
-}
-```
 
-### User Study List Collection
-
-```typescript
-users/{userId}/studyList/{videoId} {
-  videoId: string
-  addedAt: timestamp
-  priority: number
+  // User engagement
+  liked: boolean
+  saved: boolean
   notes?: string
 }
 ```
 
-### Vocabulary Collection
+### Topics Collection
 
 ```typescript
-users/{userId}/vocabulary/{wordId} {
-  word: string
-  language: string
-  translation: string
-  context: {
-    videoId: string
-    timestamp: number
-    sentence: string
-  }[]
+topics/{topicId} {
+  name: string
+  description: string
+  parentTopic?: string
+  subtopics: string[]
+  relatedTopics: string[]
 
-  // Spaced repetition data
-  learned: boolean
-  confidence: number
-  lastReviewed: timestamp
-  nextReview: timestamp
-  reviewCount: number
+  // Topic metadata
+  videoCount: number
+  learnerCount: number
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+}
+```
+
+### User Topic Progress Collection
+
+```typescript
+users/{userId}/topicProgress/{topicId} {
+  topicId: string
+  started: timestamp
+  lastActivity: timestamp
+
+  // Progress metrics
+  videosWatched: number
+  quizzesTaken: number
+  averageScore: number
+  masteryLevel: number // 0-100
+
+  // Milestones
+  achievements: {
+    achievementId: string
+    unlockedAt: timestamp
+  }[]
 }
 ```
 
@@ -159,12 +154,6 @@ users/{userId}/vocabulary/{wordId} {
 
 ```typescript
 videos/{videoId}/aiContent {
-  flashcards: {
-    front: string
-    back: string
-    example: string
-  }[]
-
   quizzes: {
     question: string
     options: string[]
@@ -174,8 +163,14 @@ videos/{videoId}/aiContent {
 
   summary: {
     key_points: string[]
-    vocabulary_focus: string[]
-    grammar_points: string[]
+    main_concepts: string[]
+    follow_up_topics: string[]
+  }
+
+  comprehensionMetrics: {
+    difficulty_score: number
+    prerequisites: string[]
+    estimated_duration: number
   }
 }
 ```
@@ -183,7 +178,6 @@ videos/{videoId}/aiContent {
 ## Security Rules
 
 ```typescript
-// Example Firestore security rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -200,9 +194,10 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isCreator;
     }
 
-    // User progress
-    match /users/{userId}/progress/{document=**} {
-      allow read, write: if request.auth.uid == userId;
+    // Topics
+    match /topics/{topicId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only
     }
   }
 }
@@ -215,10 +210,7 @@ storage/
 ├── videos/
 │   ├── {videoId}/
 │   │   ├── source.mp4
-│   │   ├── thumbnail.jpg
-│   │   └── captions/
-│   │       ├── en.vtt
-│   │       └── es.vtt
+│   │   └── thumbnail.jpg
 ├── users/
 │   └── {userId}/
 │       └── profile.jpg
@@ -227,17 +219,17 @@ storage/
 ## Required Indexes
 
 ```typescript
-// Videos by language and proficiency
-videos: language, proficiencyLevel
+// Videos by topic and difficulty
+videos: topics, difficulty
 
 // Videos by popularity
-videos: language, views
+videos: topics, views
 
 // User progress by date
 users/{userId}/progress: lastWatched
 
-// Vocabulary by next review date
-users/{userId}/vocabulary: nextReview, confidence
+// Topic progress by mastery
+users/{userId}/topicProgress: masteryLevel
 ```
 
 ## Caching Strategy
@@ -259,17 +251,17 @@ users/{userId}/vocabulary: nextReview, confidence
 
 ### Common Queries
 
-- Fetch feed videos by language and proficiency
+- Fetch feed videos by topic and difficulty
 - Get user's learning progress
-- Retrieve vocabulary for review
-- Access video metadata and transcripts
+- Retrieve topic mastery levels
+- Access video metadata and summaries
 
 ### Write Patterns
 
 - Update user progress after watching videos
-- Save vocabulary items
-- Track user engagement metrics
+- Track topic mastery
 - Store quiz results
+- Update engagement metrics
 
 ## Performance Considerations
 
