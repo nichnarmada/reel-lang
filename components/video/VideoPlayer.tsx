@@ -20,6 +20,7 @@ import {
 } from "lucide-react-native"
 import { LAYOUT } from "../../constants/layout"
 import { useSavedVideos } from "../../hooks/useSavedVideos"
+import analytics from "@react-native-firebase/analytics"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT - LAYOUT.TAB_BAR_HEIGHT
@@ -89,6 +90,15 @@ export default function VideoPlayer({
   }
 
   const handleEnd = () => {
+    // Log video completion
+    if (videoInfo) {
+      analytics().logEvent("video_complete", {
+        video_id: videoInfo.id,
+        topic_id: videoInfo.topicId,
+        topic_name: videoInfo.topicName,
+        duration: videoInfo.duration,
+      })
+    }
     onEnd?.()
   }
 
@@ -108,7 +118,15 @@ export default function VideoPlayer({
   const handleLike = () => {
     if (!isDisliked) {
       setIsLiked(!isLiked)
-      setIsDisliked(false)
+      if (!isLiked && videoInfo) {
+        // Log like event
+        analytics().logEvent("video_engagement", {
+          video_id: videoInfo.id,
+          action: "like",
+          topic_id: videoInfo.topicId,
+          topic_name: videoInfo.topicName,
+        })
+      }
       onLike?.()
     } else {
       setIsDisliked(false)
@@ -118,7 +136,15 @@ export default function VideoPlayer({
   const handleDislike = () => {
     if (!isLiked) {
       setIsDisliked(!isDisliked)
-      setIsLiked(false)
+      if (!isDisliked && videoInfo) {
+        // Log dislike event
+        analytics().logEvent("video_engagement", {
+          video_id: videoInfo.id,
+          action: "dislike",
+          topic_id: videoInfo.topicId,
+          topic_name: videoInfo.topicName,
+        })
+      }
       onDislike?.()
     } else {
       setIsLiked(false)
@@ -154,6 +180,13 @@ export default function VideoPlayer({
         const savedVideo = videos.find((v) => v.videoId === videoInfo.id)
         if (savedVideo) {
           await removeVideo(savedVideo.id, videoInfo.id)
+          // Log unsave event
+          analytics().logEvent("video_engagement", {
+            video_id: videoInfo.id,
+            action: "unsave",
+            topic_id: videoInfo.topicId,
+            topic_name: videoInfo.topicName,
+          })
         }
       } else {
         await saveVideo({
@@ -164,6 +197,13 @@ export default function VideoPlayer({
           duration: videoInfo.duration,
           topicId: videoInfo.topicId,
           topicName: videoInfo.topicName,
+        })
+        // Log save event
+        analytics().logEvent("video_engagement", {
+          video_id: videoInfo.id,
+          action: "save",
+          topic_id: videoInfo.topicId,
+          topic_name: videoInfo.topicName,
         })
       }
     } catch (err) {

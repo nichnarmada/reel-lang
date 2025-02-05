@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -6,104 +6,144 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  Alert,
 } from "react-native"
 import { Stack, useLocalSearchParams, router } from "expo-router"
 import { ChevronLeft } from "lucide-react-native"
-
-// Placeholder quiz data with correct answers
-const SAMPLE_QUESTIONS = [
-  {
-    id: "1",
-    question: "What is the main concept covered in the first video?",
-    options: [
-      "Basic fundamentals",
-      "Advanced techniques",
-      "Historical context",
-      "Modern applications",
-    ],
-    correctAnswer: 0, // Index of correct answer
-  },
-  {
-    id: "2",
-    question: "Which technique was demonstrated in the second video?",
-    options: [
-      "Progressive learning",
-      "Spaced repetition",
-      "Active recall",
-      "Mind mapping",
-    ],
-    correctAnswer: 2, // Index of correct answer
-  },
-  {
-    id: "3",
-    question: "What was the key takeaway from the third video?",
-    options: [
-      "Practice makes perfect",
-      "Learning is continuous",
-      "Time management",
-      "Goal setting",
-    ],
-    correctAnswer: 1, // Index of correct answer
-  },
-]
+import { LoadingSpinner } from "../../../components/LoadingSpinner"
+import { ErrorMessage } from "../../../components/ErrorMessage"
+import firestore from "@react-native-firebase/firestore"
+import { FIREBASE_COLLECTIONS } from "../../../utils/firebase/config"
+import { Question } from "../../../types/quiz"
 
 export default function QuizScreen() {
-  const { sessionId } = useLocalSearchParams()
+  const { sessionId, quizId } = useLocalSearchParams()
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<string, number>
+    Record<string, string>
   >({})
+  const [startTimes, setStartTimes] = useState<Record<string, number>>({})
 
-  const currentQuestion = SAMPLE_QUESTIONS[currentQuestionIndex]
-  const progress = ((currentQuestionIndex + 1) / SAMPLE_QUESTIONS.length) * 100
+  useEffect(() => {
+    const loadQuiz = async () => {
+      try {
+        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
+        const quizDoc = await firestore()
+          .collection(FIREBASE_COLLECTIONS.QUIZZES)
+          .doc(currentQuizId)
+          .get()
 
-  const handleSelectOption = (questionId: string, optionIndex: number) => {
+        if (!quizDoc.exists) {
+          throw new Error("Quiz not found")
+        }
+
+        const quizData = quizDoc.data()
+        setQuestions(quizData?.questions || [])
+
+        // Set start time for first question
+        setStartTimes({
+          [quizData?.questions[0]?.question]: Date.now(),
+        })
+      } catch (err) {
+        console.error("Error loading quiz:", err)
+        setError("Failed to load quiz questions")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadQuiz()
+  }, [quizId])
+
+  const currentQuestion = questions[currentQuestionIndex]
+  const progress =
+    questions.length > 0
+      ? ((currentQuestionIndex + 1) / questions.length) * 100
+      : 0
+
+  const handleSelectOption = async (
+    questionId: string,
+    selectedAnswer: string
+  ) => {
+    const timeSpent =
+      Date.now() - (startTimes[currentQuestion.question] || Date.now())
+
     setSelectedAnswers((prev) => ({
       ...prev,
-      [questionId]: optionIndex,
+      [questionId]: selectedAnswer,
     }))
 
-    // Automatically advance to next question
-    if (currentQuestionIndex < SAMPLE_QUESTIONS.length - 1) {
+    // If there are more questions, advance and set new start time
+    if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
+      setStartTimes((prev) => ({
+        ...prev,
+        [questions[currentQuestionIndex + 1].question]: Date.now(),
+      }))
     } else {
-      // Calculate actual score based on correct answers
-      const correctAnswers = Object.entries(selectedAnswers).reduce(
-        (count, [qId, selectedOption]) => {
-          const question = SAMPLE_QUESTIONS.find((q) => q.id === qId)
-          return count + (question?.correctAnswer === selectedOption ? 1 : 0)
-        },
-        0
-      )
+      // Quiz completed, prepare responses
+      const userResponses = questions.map((question) => ({
+        questionId: question.question,
+        selectedAnswer: selectedAnswers[question.question] || selectedAnswer,
+        isCorrect:
+          (selectedAnswers[question.question] || selectedAnswer) ===
+          question.correctAnswer,
+        timeSpent: startTimes[question.question]
+          ? Date.now() - startTimes[question.question]
+          : 0,
+      }))
 
-      // Add the last answer to the score if it's correct
-      const finalScore =
-        correctAnswers +
-        (SAMPLE_QUESTIONS[currentQuestionIndex].correctAnswer === optionIndex
-          ? 1
-          : 0)
+      // Calculate final score
+      const correctAnswers = userResponses.filter(
+        (response) => response.isCorrect
+      ).length
 
-      // Ensure sessionId is a string
-      const currentSessionId = Array.isArray(sessionId)
-        ? sessionId[0]
-        : sessionId
+      try {
+        // Update quiz document with responses
+        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
+        await firestore()
+          .collection(FIREBASE_COLLECTIONS.QUIZZES)
+          .doc(currentQuizId)
+          .update({
+            userResponses,
+          })
 
-      // Navigate to results page
-      router.replace({
-        pathname: "/quiz/[sessionId]/results" as const,
-        params: {
-          sessionId: currentSessionId,
-          score: finalScore.toString(),
-        },
-      })
+        // Navigate to results
+        const currentSessionId = Array.isArray(sessionId)
+          ? sessionId[0]
+          : sessionId
+        router.replace({
+          pathname: "/quiz/[sessionId]/results" as const,
+          params: {
+            sessionId: currentSessionId,
+            score: correctAnswers.toString(),
+            quizId: currentQuizId,
+          },
+        })
+      } catch (err) {
+        console.error("Error saving quiz responses:", err)
+        setError("Failed to save your answers. Please try again.")
+      }
     }
   }
 
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1)
-    }
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <LoadingSpinner />
+        <Text style={styles.loadingText}>Loading quiz...</Text>
+      </View>
+    )
+  }
+
+  if (error || !currentQuestion) {
+    return (
+      <View style={styles.centerContainer}>
+        <ErrorMessage message={error || "No questions available"} />
+      </View>
+    )
   }
 
   return (
@@ -136,7 +176,7 @@ export default function QuizScreen() {
           contentContainerStyle={styles.contentContainer}
         >
           <Text style={styles.questionNumber}>
-            Question {currentQuestionIndex + 1} of {SAMPLE_QUESTIONS.length}
+            Question {currentQuestionIndex + 1} of {questions.length}
           </Text>
           <Text style={styles.question}>{currentQuestion.question}</Text>
 
@@ -147,15 +187,17 @@ export default function QuizScreen() {
                 key={index}
                 style={[
                   styles.optionButton,
-                  selectedAnswers[currentQuestion.id] === index &&
+                  selectedAnswers[currentQuestion.question] === option &&
                     styles.selectedOption,
                 ]}
-                onPress={() => handleSelectOption(currentQuestion.id, index)}
+                onPress={() =>
+                  handleSelectOption(currentQuestion.question, option)
+                }
               >
                 <Text
                   style={[
                     styles.optionText,
-                    selectedAnswers[currentQuestion.id] === index &&
+                    selectedAnswers[currentQuestion.question] === option &&
                       styles.selectedOptionText,
                   ]}
                 >
@@ -242,5 +284,15 @@ const styles = StyleSheet.create({
   selectedOptionText: {
     color: "#8a2be2",
     fontWeight: "500",
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
   },
 })

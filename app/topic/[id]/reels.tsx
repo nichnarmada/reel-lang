@@ -23,6 +23,11 @@ import {
 } from "../../../utils/pexels"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { ErrorMessage } from "../../../components/ErrorMessage"
+import analytics from "@react-native-firebase/analytics"
+import firestore from "@react-native-firebase/firestore"
+import { useAuth } from "../../../contexts/auth"
+import { FIREBASE_COLLECTIONS } from "../../../utils/firebase/config"
+import { SAMPLE_QUESTIONS } from "../../../constants/quiz"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT
@@ -36,37 +41,96 @@ type VideoItem = {
 }
 
 export default function ReelsScreen() {
-  const { topicId, topicName, duration } = useLocalSearchParams()
+  const { topicId, topicName, duration, sessionId } = useLocalSearchParams()
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null)
   const flatListRef = useRef<FlatList>(null)
+  const { user } = useAuth()
 
-  const handleSessionEnd = useCallback(() => {
-    // Ensure topicId is a string
+  const handleSessionEnd = useCallback(async () => {
+    if (!user) return
+
+    // Ensure topicId and sessionId are strings
     const currentTopicId = Array.isArray(topicId) ? topicId[0] : topicId
+    const currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
+    const currentTopicName = Array.isArray(topicName) ? topicName[0] : topicName
 
-    Alert.alert(
-      "Time's Up!",
-      "Your learning session is complete. Ready for a quick quiz?",
-      [
-        {
-          text: "Take Quiz",
-          onPress: () => {
-            // Navigate to quiz with topic ID
-            router.replace({
-              pathname: "/quiz/[sessionId]" as const,
-              params: {
-                sessionId: currentTopicId,
-              },
-            })
-          },
+    try {
+      // Update session status to completed
+      await firestore()
+        .collection(FIREBASE_COLLECTIONS.SESSIONS)
+        .doc(currentSessionId)
+        .update({
+          status: "completed",
+          completedAt: firestore.Timestamp.now(),
+        })
+
+      // Create quiz document
+      const quizRef = firestore().collection(FIREBASE_COLLECTIONS.QUIZZES).doc()
+
+      // Format questions to match our Question type
+      const formattedQuestions = SAMPLE_QUESTIONS.map((question) => ({
+        question: question.question,
+        options: question.options,
+        correctAnswer: question.options[question.correctAnswer], // Convert index to actual answer
+        explanation: "This answer was chosen based on the video content", // Placeholder explanation
+        topicId: currentTopicId,
+        videoReference: videos[0]?.id || "", // Reference first video if available
+      }))
+
+      const quizData = {
+        id: quizRef.id,
+        sessionId: currentSessionId,
+        userId: user.uid,
+        questions: formattedQuestions,
+        userResponses: [],
+        metadata: {
+          generatedAt: firestore.Timestamp.now(),
+          difficulty: "beginner", // TODO: Make this dynamic based on user's level
+          topics: [currentTopicId],
         },
-      ],
-      { cancelable: false }
-    )
-  }, [topicId])
+      }
+
+      await quizRef.set(quizData)
+
+      // Log session completion
+      analytics().logEvent("session_complete", {
+        session_id: currentSessionId,
+        topic_id: currentTopicId,
+        topic_name: currentTopicName,
+        duration: duration,
+        videos_watched: videos.length,
+      })
+
+      Alert.alert(
+        "Time's Up!",
+        "Your learning session is complete. Ready for a quick quiz?",
+        [
+          {
+            text: "Take Quiz",
+            onPress: () => {
+              router.replace({
+                pathname: "/quiz/[sessionId]" as const,
+                params: {
+                  sessionId: currentSessionId,
+                  quizId: quizRef.id,
+                },
+              })
+            },
+          },
+        ],
+        { cancelable: false }
+      )
+    } catch (err) {
+      console.error("Error ending session:", err)
+      Alert.alert(
+        "Error",
+        "There was an error ending your session. Please try again."
+      )
+    }
+  }, [topicId, sessionId, topicName, duration, videos.length, user])
 
   useEffect(() => {
     async function loadVideos() {
@@ -107,10 +171,19 @@ export default function ReelsScreen() {
   const handleViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (viewableItems.length > 0) {
-        setVisibleVideoId(viewableItems[0].item.id)
+        const newVisibleVideo = viewableItems[0].item
+        setVisibleVideoId(newVisibleVideo.id)
+
+        // Log video start event
+        analytics().logEvent("video_start", {
+          video_id: newVisibleVideo.id,
+          topic_id: Array.isArray(topicId) ? topicId[0] : topicId,
+          topic_name: topicName,
+          session_id: Array.isArray(sessionId) ? sessionId[0] : sessionId,
+        })
       }
     },
-    []
+    [topicId, topicName, sessionId]
   )
 
   const renderItem = useCallback(
