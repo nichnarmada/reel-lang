@@ -16,7 +16,6 @@
 - As a learner, I want topic suggestions if I'm unsure what to learn
 - As a learner, I want to save videos for later review
 - As a learner, I want to pause my session if needed
-- As a learner, I want to share interesting videos
 
 ## Week 2
 

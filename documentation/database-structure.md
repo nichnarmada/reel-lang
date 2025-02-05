@@ -53,6 +53,23 @@ users: {
 }
 ```
 
+### Saved Videos Collection
+
+```typescript
+savedVideos: {
+  id: string
+  userId: string // reference to user
+  videoId: string // reference to video
+  title: string
+  description: string
+  thumbnail: string
+  duration: string
+  topicId: string
+  topicName: string
+  savedAt: string
+}
+```
+
 ### Topics Collection
 
 ```typescript
@@ -188,59 +205,12 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
+
+    // Saved Videos
+    match /savedVideos/{videoId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
   }
 }
 ```
-
-## Storage Structure
-
-```
-storage/
-├── videos/
-│   ├── {videoId}/
-│   │   ├── source.mp4
-│   │   └── thumbnail.jpg
-├── users/
-│   └── {userId}/
-│       └── profile.jpg
-```
-
-## Required Indexes
-
-```typescript
-// Videos by topic and difficulty
-videos: topicIds, metadata.uploadDate
-
-// Videos by popularity
-videos: topicIds, engagement.views
-
-// Sessions by user and status
-sessions: userId, config.status
-
-// User quizzes by date
-quizzes: userId, metadata.generatedAt
-```
-
-## Performance Considerations
-
-1. Implement pagination for video feeds
-2. Use composite indexes for complex queries
-3. Optimize data structure for common access patterns
-4. Cache frequently accessed data
-5. Monitor database usage and costs
-
-## Data Access Patterns
-
-### Common Queries
-
-- Fetch videos by topic
-- Get user's active/completed sessions
-- Retrieve quiz results
-- Access video metadata
-
-### Write Patterns
-
-- Create new learning sessions
-- Update session progress
-- Store quiz responses
-- Update video engagement metrics
