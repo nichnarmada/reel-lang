@@ -18,13 +18,16 @@ import {
   HelpCircle,
   LogOut,
   ChevronRight,
+  Bookmark,
 } from "lucide-react-native"
 import { HEADER_PADDING } from "../../constants/layout"
+import { useRouter } from "expo-router"
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth()
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true)
   const [autoplayEnabled, setAutoplayEnabled] = React.useState(true)
+  const router = useRouter()
 
   const handleSignOut = async () => {
     try {
@@ -60,6 +63,16 @@ export default function ProfileScreen() {
           </View>
           <ChevronRight size={20} color="#666" />
         </View>
+        <TouchableOpacity
+          style={styles.settingItem}
+          onPress={() => router.push("/saved-videos")}
+        >
+          <View style={styles.settingLeft}>
+            <Bookmark size={24} color="#666" />
+            <Text style={styles.settingText}>Saved Videos</Text>
+          </View>
+          <ChevronRight size={20} color="#666" />
+        </TouchableOpacity>
       </View>
 
       {/* App Settings */}

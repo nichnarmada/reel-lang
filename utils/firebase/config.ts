@@ -9,6 +9,7 @@ export const FIREBASE_COLLECTIONS = {
   VIDEOS: "videos",
   SESSIONS: "sessions",
   QUIZZES: "quizzes",
+  SAVED_VIDEOS: "savedVideos",
 } as const
 
 // Type for collection names to ensure type safety

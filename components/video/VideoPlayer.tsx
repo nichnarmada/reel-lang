@@ -15,8 +15,11 @@ import {
   VolumeX,
   ThumbsUp,
   ThumbsDown,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react-native"
 import { LAYOUT } from "../../constants/layout"
+import { useSavedVideos } from "../../hooks/useSavedVideos"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT - LAYOUT.TAB_BAR_HEIGHT
@@ -31,6 +34,15 @@ type VideoPlayerProps = {
   onEnd?: () => void
   onLike?: () => void
   onDislike?: () => void
+  videoInfo?: {
+    id: string
+    title: string
+    description: string
+    thumbnail: string
+    duration: string
+    topicId: string
+    topicName: string
+  }
   style?: any
 }
 
@@ -44,6 +56,7 @@ export default function VideoPlayer({
   onEnd,
   onLike,
   onDislike,
+  videoInfo,
   style,
 }: VideoPlayerProps) {
   const videoRef = useRef<VideoRef>(null)
@@ -54,6 +67,10 @@ export default function VideoPlayer({
   const [isDisliked, setIsDisliked] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
+  const { videos, saveVideo, removeVideo } = useSavedVideos()
+  const isSaved = videoInfo
+    ? videos.some((v) => v.videoId === videoInfo.id)
+    : false
 
   useEffect(() => {
     setPaused(initialPaused)
@@ -89,22 +106,68 @@ export default function VideoPlayer({
   }
 
   const handleLike = () => {
-    if (!isLiked) {
-      setIsLiked(true)
+    if (!isDisliked) {
+      setIsLiked(!isLiked)
       setIsDisliked(false)
       onLike?.()
+    } else {
+      setIsDisliked(false)
+    }
+  }
+
+  const handleDislike = () => {
+    if (!isLiked) {
+      setIsDisliked(!isDisliked)
+      setIsLiked(false)
+      onDislike?.()
     } else {
       setIsLiked(false)
     }
   }
 
-  const handleDislike = () => {
-    if (!isDisliked) {
-      setIsDisliked(true)
-      setIsLiked(false)
-      onDislike?.()
-    } else {
-      setIsDisliked(false)
+  const handleSave = async () => {
+    if (!videoInfo) return
+
+    try {
+      // Validate required fields using type-safe field access
+      const requiredFields = {
+        id: videoInfo.id,
+        title: videoInfo.title,
+        description: videoInfo.description,
+        thumbnail: videoInfo.thumbnail,
+        duration: videoInfo.duration,
+        topicId: videoInfo.topicId,
+        topicName: videoInfo.topicName,
+      }
+
+      const missingFields = Object.entries(requiredFields)
+        .filter(([_, value]) => !value)
+        .map(([key]) => key)
+
+      if (missingFields.length > 0) {
+        console.error("Missing required fields:", missingFields)
+        console.log("Video info:", videoInfo)
+        throw new Error(`Missing required fields: ${missingFields.join(", ")}`)
+      }
+
+      if (isSaved) {
+        const savedVideo = videos.find((v) => v.videoId === videoInfo.id)
+        if (savedVideo) {
+          await removeVideo(savedVideo.id, videoInfo.id)
+        }
+      } else {
+        await saveVideo({
+          id: videoInfo.id,
+          title: videoInfo.title,
+          description: videoInfo.description,
+          thumbnail: videoInfo.thumbnail,
+          duration: videoInfo.duration,
+          topicId: videoInfo.topicId,
+          topicName: videoInfo.topicName,
+        })
+      }
+    } catch (err) {
+      console.error("Error toggling video save:", err)
     }
   }
 
@@ -179,6 +242,22 @@ export default function VideoPlayer({
             <Volume2 size={24} color="#fff" />
           )}
         </TouchableOpacity>
+
+        {videoInfo && (
+          <TouchableOpacity
+            style={[
+              styles.controlButton,
+              isSaved && styles.activeControlButton,
+            ]}
+            onPress={handleSave}
+          >
+            {isSaved ? (
+              <BookmarkCheck size={24} color="#8a2be2" />
+            ) : (
+              <Bookmark size={24} color="#fff" />
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   )

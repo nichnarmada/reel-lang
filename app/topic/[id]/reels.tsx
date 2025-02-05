@@ -19,6 +19,7 @@ import {
   searchVideos,
   getBestVideoUrl,
   PexelsVideo,
+  getVideoThumbnail,
 } from "../../../utils/pexels"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { ErrorMessage } from "../../../components/ErrorMessage"
@@ -31,6 +32,7 @@ type VideoItem = {
   uri: string
   title: string
   description: string
+  thumbnail: string
 }
 
 export default function ReelsScreen() {
@@ -71,12 +73,18 @@ export default function ReelsScreen() {
       try {
         setLoading(true)
         const pexelsVideos = await searchVideos(topicName as string, 10)
-        const formattedVideos = pexelsVideos.map((video) => ({
-          id: video.id.toString(),
-          uri: getBestVideoUrl(video),
-          title: `Learn ${topicName} - Part ${video.id}`,
-          description: `Educational video about ${topicName}`,
-        }))
+        const formattedVideos = await Promise.all(
+          pexelsVideos.map(async (video) => {
+            const thumbnail = video.image || (await getVideoThumbnail(video.id))
+            return {
+              id: video.id.toString(),
+              uri: getBestVideoUrl(video),
+              title: `Learn ${topicName} - Part ${video.id}`,
+              description: `Educational video about ${topicName}`,
+              thumbnail,
+            }
+          })
+        )
         setVideos(formattedVideos)
         if (formattedVideos.length > 0) {
           setVisibleVideoId(formattedVideos[0].id)
@@ -115,6 +123,15 @@ export default function ReelsScreen() {
           onError={(error) => console.error(`Video ${item.id} error:`, error)}
           onLike={() => console.log("Liked video:", item.id)}
           onDislike={() => console.log("Disliked video:", item.id)}
+          videoInfo={{
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            thumbnail: item.thumbnail,
+            duration: "3:00", // Placeholder duration
+            topicId: Array.isArray(topicId) ? topicId[0] : topicId,
+            topicName: Array.isArray(topicName) ? topicName[0] : topicName,
+          }}
         />
         <View style={styles.overlay}>
           <View style={styles.videoInfo}>

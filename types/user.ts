@@ -26,6 +26,19 @@ export interface UserAchievement {
   unlockedAt: Timestamp
 }
 
+export interface SavedVideo {
+  id: string
+  userId: string
+  videoId: string
+  title: string
+  description: string
+  thumbnail: string
+  duration: string
+  topicId: string
+  topicName: string
+  savedAt: string
+}
+
 export interface User {
   uid: string
   profile: UserProfile

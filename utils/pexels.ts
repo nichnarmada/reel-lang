@@ -10,6 +10,7 @@ export type PexelsVideo = {
   height: number
   duration: number
   url: string
+  image: string // Thumbnail URL
   video_files: {
     id: number
     quality: string
@@ -17,6 +18,11 @@ export type PexelsVideo = {
     width: number
     height: number
     link: string
+  }[]
+  video_pictures: {
+    id: number
+    picture: string
+    nr: number
   }[]
 }
 
@@ -68,4 +74,39 @@ export function getBestVideoUrl(video: PexelsVideo): string {
   )
 
   return hdVideo?.link || fallbackVideo?.link || video.video_files[0].link
+}
+
+export async function getVideoDetails(
+  videoId: string | number
+): Promise<PexelsVideo> {
+  if (!PEXELS_API_KEY) {
+    throw new Error("Please provide a valid Pexels API key")
+  }
+
+  try {
+    const response = (await client.videos.show({ id: Number(videoId) })) as
+      | PexelsVideo
+      | ErrorResponse
+
+    if ("error" in response) {
+      throw new Error(`Pexels API error: ${response.error}`)
+    }
+
+    return response
+  } catch (error) {
+    console.error("Error fetching video details:", error)
+    throw error
+  }
+}
+
+export async function getVideoThumbnail(
+  videoId: string | number
+): Promise<string> {
+  try {
+    const video = await getVideoDetails(videoId)
+    return video.image || video.video_pictures[0].picture
+  } catch (error) {
+    console.error("Error fetching video thumbnail:", error)
+    throw error
+  }
 }
