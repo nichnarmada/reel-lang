@@ -1,30 +1,28 @@
-import { DifficultyLevel } from "./topic"
+import { Timestamp } from "."
+
+export interface VideoMetadata {
+  source: string
+  author: string
+  uploadDate: Timestamp
+}
+
+export interface VideoEngagement {
+  views: number
+  saves: number
+  shares: number
+  completionRate: number
+}
 
 export interface Video {
   id: string
+  title: string
+  description: string
+  duration: number // in seconds
   url: string
   thumbnailUrl: string
-  caption: string
-  language: string
-  proficiencyLevel: DifficultyLevel
-  duration: number
-  metadata: {
-    title: string
-    description: string
-    tags: string[]
-    uploadedAt: Date
-    creator: string
-  }
-  captions: {
-    text: string
-    startTime: number
-    endTime: number
-  }[]
-}
-
-export interface VideoPlayerProps {
-  video: Video
-  autoPlay?: boolean
-  onComplete?: () => void
-  onError?: (error: Error) => void
+  topicIds: string[] // references to topics
+  transcript: string // for quiz generation
+  keyPoints: string[] // main concepts covered
+  metadata: VideoMetadata
+  engagement: VideoEngagement
 }
