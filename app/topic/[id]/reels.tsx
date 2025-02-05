@@ -8,11 +8,13 @@ import {
   Text,
   TouchableOpacity,
   ViewToken,
+  Alert,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
 import { LAYOUT } from "../../../constants/layout"
 import VideoPlayer from "../../../components/video/VideoPlayer"
 import { ChevronLeft } from "lucide-react-native"
+import SessionTimer from "../../../components/session/SessionTimer"
 import {
   searchVideos,
   getBestVideoUrl,
@@ -38,6 +40,26 @@ export default function ReelsScreen() {
   const [error, setError] = useState<string | null>(null)
   const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null)
   const flatListRef = useRef<FlatList>(null)
+
+  const handleSessionEnd = useCallback(() => {
+    Alert.alert(
+      "Time's Up!",
+      "Your learning session is complete. Ready for a quick quiz?",
+      [
+        {
+          text: "Take Quiz",
+          onPress: () => {
+            // TODO: Navigate to quiz page with session ID
+            router.push({
+              pathname: "/quiz/[sessionId]" as const,
+              params: { sessionId: "TODO" },
+            })
+          },
+        },
+      ],
+      { cancelable: false }
+    )
+  }, [])
 
   useEffect(() => {
     async function loadVideos() {
@@ -134,6 +156,14 @@ export default function ReelsScreen() {
         >
           <ChevronLeft size={24} color="#fff" />
         </TouchableOpacity>
+
+        <View style={styles.timerContainer}>
+          <SessionTimer
+            durationMinutes={Number(duration) || 5}
+            onTimeUp={handleSessionEnd}
+          />
+        </View>
+
         <FlatList
           ref={flatListRef}
           data={videos}
@@ -225,5 +255,11 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     borderRadius: 20,
+  },
+  timerContainer: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 60 : 20,
+    right: 20,
+    zIndex: 10,
   },
 })
