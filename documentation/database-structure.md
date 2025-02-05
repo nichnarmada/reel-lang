@@ -21,6 +21,13 @@ We'll utilize the following Firebase products for our database needs:
 - Social auth providers
 - Session management
 
+### Firebase Analytics
+
+- User engagement tracking
+- Video interaction analytics
+- Learning progress metrics
+- See [Firebase Analytics Documentation](./firebase-analytics.md) for detailed event tracking
+
 ## Collection Structures
 
 ### Users Collection
@@ -50,6 +57,20 @@ users: {
     achievementId: string;
     unlockedAt: timestamp;
   }[];
+}
+```
+
+### Video Reactions Collection
+
+```typescript
+videoReactions: {
+  id: string
+  userId: string
+  videoId: string
+  type: "like" | "dislike"
+  createdAt: timestamp
+  updatedAt: timestamp
+  topicId: string // for analytics grouping
 }
 ```
 
@@ -120,28 +141,26 @@ videos: {
 
 ```typescript
 sessions: {
-  id: string
-  userId: string
-  topicId: string
-  config: {
-    duration: number // in minutes
-    startTime: timestamp
-    endTime: timestamp
-    status: "active" | "completed" | "paused"
-  }
-  watchHistory: {
-    videoId: string
-    watchedDuration: number
-    timestamp: timestamp
-  }
-  ;[]
-  quizResults: {
-    score: number
-    totalQuestions: number
-    timeSpent: number
-  }
+  id: string;
+  userId: string;
+  topicId: string;
+  topicName: string; // Denormalized for UI convenience
+  status: "active" | "completed" | "paused";
+  startTime: timestamp;
+  completedAt?: timestamp;
+  duration: number; // in minutes
 }
 ```
+
+Note: Video engagement tracking (views, watch duration, completion) is handled by Firebase Analytics rather than Firestore. This provides better performance and built-in analytics capabilities while keeping our database structure lean.
+
+Firebase Analytics Events:
+
+- `video_start`: Tracks when a user starts watching a video
+- `video_complete`: Tracks video completion
+- `video_engagement`: Tracks likes, saves, and shares
+- `session_progress`: Tracks learning session progress
+- `session_complete`: Tracks session completion with summary data
 
 ### Quizzes Collection
 
@@ -198,6 +217,13 @@ service cloud.firestore {
     match /sessions/{sessionId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Video Reactions
+    match /videoReactions/{reactionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Quizzes
