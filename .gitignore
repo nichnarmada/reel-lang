@@ -57,3 +57,6 @@ android/.idea/
 # Ignore build artifacts for iOS
 ios/build/
 ios/Pods/
+
+# Added .env file
+.env
