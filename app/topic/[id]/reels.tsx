@@ -42,6 +42,9 @@ export default function ReelsScreen() {
   const flatListRef = useRef<FlatList>(null)
 
   const handleSessionEnd = useCallback(() => {
+    // Ensure topicId is a string
+    const currentTopicId = Array.isArray(topicId) ? topicId[0] : topicId
+
     Alert.alert(
       "Time's Up!",
       "Your learning session is complete. Ready for a quick quiz?",
@@ -49,17 +52,19 @@ export default function ReelsScreen() {
         {
           text: "Take Quiz",
           onPress: () => {
-            // For now, using a placeholder session ID
-            router.push({
+            // Navigate to quiz with topic ID
+            router.replace({
               pathname: "/quiz/[sessionId]" as const,
-              params: { sessionId: "test-session-1" },
+              params: {
+                sessionId: currentTopicId,
+              },
             })
           },
         },
       ],
       { cancelable: false }
     )
-  }, [])
+  }, [topicId])
 
   useEffect(() => {
     async function loadVideos() {
