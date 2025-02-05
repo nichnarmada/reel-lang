@@ -49,10 +49,10 @@ export default function ReelsScreen() {
         {
           text: "Take Quiz",
           onPress: () => {
-            // TODO: Navigate to quiz page with session ID
+            // For now, using a placeholder session ID
             router.push({
               pathname: "/quiz/[sessionId]" as const,
-              params: { sessionId: "TODO" },
+              params: { sessionId: "test-session-1" },
             })
           },
         },

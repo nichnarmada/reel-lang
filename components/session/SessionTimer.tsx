@@ -33,13 +33,9 @@ export default function SessionTimer({
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
   }, [])
 
-  const isNearingEnd = timeRemaining <= 60 // Last minute
-
   return (
     <View style={styles.container}>
-      <Text style={[styles.timerText, isNearingEnd && styles.timerTextWarning]}>
-        {formatTime(timeRemaining)}
-      </Text>
+      <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
     </View>
   )
 }
@@ -55,8 +51,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-  },
-  timerTextWarning: {
-    color: "#ff4444",
   },
 })

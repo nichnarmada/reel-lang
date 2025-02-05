@@ -1,35 +1,32 @@
-import { DifficultyLevel } from "./topic"
+import { DifficultyLevel, Timestamp } from "."
+
+export interface Question {
+  question: string
+  options: string[]
+  correctAnswer: string
+  explanation: string
+  topicId: string
+  videoReference: string // video ID this question was generated from
+}
+
+export interface UserResponse {
+  questionId: string
+  selectedAnswer: string
+  isCorrect: boolean
+  timeSpent: number
+}
+
+export interface QuizMetadata {
+  generatedAt: Timestamp
+  difficulty: DifficultyLevel
+  topics: string[] // topic IDs covered
+}
 
 export interface Quiz {
   id: string
-  topic: string
-  title: string
-  description: string
-  questionCount: number
-  estimatedTime: string
-  difficulty: DifficultyLevel
-  progress: number
-}
-
-export interface Question {
-  id: string
-  quizId: string
-  text: string
-  options: string[]
-  correctOption: number
-  explanation: string
-}
-
-export interface QuizProgress {
+  sessionId: string
   userId: string
-  quizId: string
-  completed: boolean
-  score: number
-  startedAt: Date
-  completedAt?: Date
-  answers: {
-    questionId: string
-    selectedOption: number
-    correct: boolean
-  }[]
+  questions: Question[]
+  userResponses: UserResponse[]
+  metadata: QuizMetadata
 }
