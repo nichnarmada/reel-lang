@@ -23,13 +23,17 @@ import {
   BookOpen,
   X,
 } from "lucide-react-native"
+import { useAuth } from "../../contexts/auth"
+import { FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
+import firestore from "@react-native-firebase/firestore"
 
 const WINDOW_WIDTH = Dimensions.get("window").width
 
-type SessionDuration = 5 | 10 | 15
+type SessionDuration = 1 | 5 | 10 | 15
 
 export default function TopicDetailsScreen() {
   const { id } = useLocalSearchParams()
+  const { user } = useAuth()
   const { topics } = useTopics()
   const [topic, setTopic] = useState<Topic | null>(null)
   const [loading, setLoading] = useState(true)
@@ -89,20 +93,50 @@ export default function TopicDetailsScreen() {
     loadTopic()
   }, [id, topics])
 
-  const handleStartLearning = (duration: SessionDuration) => {
-    if (!topic) return
+  const handleStartLearning = async (duration: SessionDuration) => {
+    if (!topic || !user) return
 
-    // TODO: Create session in Firestore
-    setShowDurationModal(false)
-    router.push({
-      pathname: "/topic/[id]/reels" as const,
-      params: {
-        id: topic.id,
+    try {
+      // Create a new session document
+      const sessionRef = firestore()
+        .collection(FIREBASE_COLLECTIONS.SESSIONS)
+        .doc()
+      await sessionRef.set({
+        id: sessionRef.id,
+        userId: user.uid,
         topicId: topic.id,
         topicName: topic.name,
-        duration: duration.toString(),
-      },
-    })
+        status: "active",
+        startTime: firestore.Timestamp.now(),
+        duration: duration,
+      })
+
+      // Navigate to reels with session ID
+      setShowDurationModal(false)
+      router.push({
+        pathname: "/topic/[id]/reels" as const,
+        params: {
+          id: topic.id,
+          topicId: topic.id,
+          topicName: topic.name,
+          duration: duration.toString(),
+          sessionId: sessionRef.id,
+        },
+      })
+    } catch (err) {
+      console.error("Error creating session:", err)
+      // Still navigate even if session creation fails
+      setShowDurationModal(false)
+      router.push({
+        pathname: "/topic/[id]/reels" as const,
+        params: {
+          id: topic.id,
+          topicId: topic.id,
+          topicName: topic.name,
+          duration: duration.toString(),
+        },
+      })
+    }
   }
 
   if (loading) {
@@ -261,14 +295,16 @@ export default function TopicDetailsScreen() {
             <Text style={styles.modalSubtitle}>
               How long would you like to learn for?
             </Text>
-            {[5, 10, 15].map((duration) => (
+            {[1, 5, 10, 15].map((duration) => (
               <TouchableOpacity
                 key={duration}
                 style={styles.durationOption}
                 onPress={() => handleStartLearning(duration as SessionDuration)}
               >
                 <Clock size={20} color="#666" />
-                <Text style={styles.durationText}>{duration} minutes</Text>
+                <Text style={styles.durationText}>
+                  {duration} minute{duration > 1 ? "s" : ""}
+                </Text>
                 <Text style={styles.durationSubtext}>
                   ~{Math.ceil(duration / 3)} videos
                 </Text>
