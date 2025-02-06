@@ -6,7 +6,7 @@ import { TopicsProvider } from "../contexts/topics"
 
 // This component handles the auth flow routing
 function AuthenticatedLayout() {
-  const { user, loading } = useAuth()
+  const { user, loading, hasCompletedOnboarding } = useAuth()
   const segments = useSegments()
   const router = useRouter()
 
@@ -17,25 +17,37 @@ function AuthenticatedLayout() {
     }
 
     const inAuthGroup = segments[0] === "(auth)"
+    const inOnboarding = segments[0] === "onboarding"
+
     console.log({
       currentSegments: segments,
       firstSegment: segments[0],
       inAuthGroup,
+      inOnboarding,
       userExists: !!user,
+      hasCompletedOnboarding,
     })
 
     if (!user && !inAuthGroup) {
       // Redirect to sign-in if user is not authenticated and not in auth group
       router.replace("/sign-in")
-    } else if (user && inAuthGroup) {
-      // Redirect to home if user is authenticated and in auth group
+    } else if (user && !hasCompletedOnboarding && !inOnboarding) {
+      // Redirect to onboarding if user hasn't completed it
+      router.replace("/onboarding")
+    } else if (
+      user &&
+      hasCompletedOnboarding &&
+      (inAuthGroup || inOnboarding)
+    ) {
+      // Redirect to home if user is authenticated and has completed onboarding
       router.replace("/")
     }
-  }, [user, loading, segments])
+  }, [user, loading, hasCompletedOnboarding, segments])
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       {/* <Stack.Screen name="(auth)" options={{ headerShown: false }} /> */}
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   )

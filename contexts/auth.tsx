@@ -21,11 +21,14 @@ interface AuthContextType {
   user: FirebaseAuthTypes.User | null
   loading: boolean
   error: string | null
+  hasCompletedOnboarding: boolean
+  checkOnboardingStatus: () => Promise<boolean>
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   googleSignIn: () => Promise<void>
   signOut: () => Promise<void>
   clearError: () => void
+  setOnboardingComplete: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -34,6 +37,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
+
+  const checkOnboardingStatus = async () => {
+    if (!user) return false
+
+    try {
+      const userDoc = await firestore()
+        .collection(FIREBASE_COLLECTIONS.USERS)
+        .doc(user.uid)
+        .get()
+
+      if (!userDoc.exists) return false
+
+      const userData = userDoc.data() as User
+      const completed = !!userData.preferences?.onboarding?.completedAt
+      setHasCompletedOnboarding(completed)
+      return completed
+    } catch (err) {
+      console.error("Error checking onboarding status:", err)
+      return false
+    }
+  }
+
+  const setOnboardingComplete = async () => {
+    setHasCompletedOnboarding(true)
+  }
 
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged(async (user) => {
@@ -67,7 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             },
             weeklyProgress: {
               timeSpent: Array(7).fill(0),
-              quizScores: Array(7).fill(0),
             },
           }
 
@@ -84,6 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               defaultSessionLength: 5,
               topicsOfInterest: [],
               difficultyPreference: "beginner",
+              onboarding: null,
+              preferredCategories: [],
+              skillLevels: {},
+              learningGoals: [],
             },
             stats: defaultStats,
             achievements: [],
@@ -93,7 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .collection(FIREBASE_COLLECTIONS.USERS)
             .doc(user.uid)
             .set(userData)
+
+          setHasCompletedOnboarding(false)
+        } else {
+          // Check onboarding status from existing user
+          await checkOnboardingStatus()
         }
+      } else {
+        setHasCompletedOnboarding(false)
       }
       setUser(user)
       setLoading(false)
@@ -142,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
       await firebaseSignOut()
+      setHasCompletedOnboarding(false)
     } catch (error) {
       handleAuthError(error as AuthError)
     }
@@ -155,11 +195,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading,
         error,
+        hasCompletedOnboarding,
+        checkOnboardingStatus,
         signIn,
         signUp,
         googleSignIn,
         signOut,
         clearError,
+        setOnboardingComplete,
       }}
     >
       {children}
