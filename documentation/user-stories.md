@@ -4,29 +4,32 @@
 
 ### Core User Stories
 
-- As a learner, I want to input a topic I want to learn about today
-- As a learner, I want to set a timer for my learning session (5/10/15 mins)
-- As a learner, I want to watch topic-filtered short videos continuously
-- As a learner, I want to see how much time is left in my session
-- As a learner, I want to take a quiz after my session ends
-- As a learner, I want to track my learning history by topic
+- [x] As a learner, I want to input a topic I want to learn about today
+- [x] As a learner, I want to set a timer for my learning session (5/10/15 mins)
+- [x] As a learner, I want to watch topic-filtered short videos continuously
+- [x] As a learner, I want to see how much time is left in my session
+- [ ] As a learner, I want to take a quiz after my session ends
+- [x] As a learner, I want to track my learning history by topic
 
 ### Additional Features
 
-- As a learner, I want topic suggestions if I'm unsure what to learn
-- As a learner, I want to save videos for later review
-- As a learner, I want to pause my session if needed
+- [x] As a learner, I want topic suggestions if I'm unsure what to learn
+- [x] As a learner, I want visually appealing topic presentations with emojis and colors
+- [x] As a learner, I want to save videos for later review
+- [x] As a learner, I want to pause my session if needed
+- [x] As a learner, I want to discover new topics through AI suggestions
+- [x] As a learner, I want to refresh topic suggestions when I want new ideas
 
 ## Week 2
 
 ### Core AI Features
 
-- As a learner, I want AI-generated quizzes based on watched content
-- As a learner, I want personalized topic suggestions
-- As a learner, I want to see my knowledge gaps in topics
-- As a learner, I want difficulty-appropriate content
-- As a learner, I want topic mastery tracking
-- As a learner, I want learning path recommendations
+- [x] As a learner, I want AI-generated topic suggestions based on my interests
+- [ ] As a learner, I want personalized topic suggestions
+- [ ] As a learner, I want to see my knowledge gaps in topics
+- [ ] As a learner, I want difficulty-appropriate content
+- [ ] As a learner, I want topic mastery tracking
+- [ ] As a learner, I want learning path recommendations
 
 ### Learning Statistics Features
 
