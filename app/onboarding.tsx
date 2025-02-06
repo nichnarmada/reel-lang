@@ -10,7 +10,7 @@ import {
 } from "react-native"
 import { router } from "expo-router"
 import { useAuth } from "../contexts/auth"
-import { allTopics } from "@/constants/topics"
+import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../hooks/useUserPreferences"
 import { ErrorMessage } from "../components/ErrorMessage"
 
@@ -80,7 +80,7 @@ export default function OnboardingScreen() {
 
         {/* Categories Grid */}
         <View style={styles.categoriesContainer}>
-          {allTopics.map((topic) => (
+          {allCategories.map((topic) => (
             <TouchableOpacity
               key={topic.id}
               style={[

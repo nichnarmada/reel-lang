@@ -18,7 +18,7 @@ import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
 import { Search, Shuffle } from "lucide-react-native"
 import { Topic } from "../../types/topic"
-import { allTopics } from "@/constants/topics"
+import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../../hooks/useUserPreferences"
 
 export default function DiscoverScreen() {
@@ -47,12 +47,12 @@ export default function DiscoverScreen() {
 
   // State for suggested topics
   const [suggestedTopics, setSuggestedTopics] = useState(() =>
-    shuffleArray(allTopics).slice(0, 6)
+    shuffleArray(allCategories).slice(0, 6)
   )
 
   // Function to get new suggestions
   const refreshSuggestions = () => {
-    setSuggestedTopics(shuffleArray(allTopics).slice(0, 6))
+    setSuggestedTopics(shuffleArray(allCategories).slice(0, 6))
   }
 
   // Function to handle topic selection
@@ -97,7 +97,9 @@ export default function DiscoverScreen() {
 
   const suggestedTopicsForUser =
     preferences?.preferredCategories
-      ?.map((categoryId) => allTopics.find((topic) => topic.id === categoryId))
+      ?.map((categoryId) =>
+        allCategories.find((topic) => topic.id === categoryId)
+      )
       .filter((topic): topic is NonNullable<typeof topic> => Boolean(topic)) ||
     []
 

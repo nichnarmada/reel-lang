@@ -12,7 +12,7 @@ import {
   FlaskConical,
 } from "lucide-react-native"
 
-export const allTopics = [
+export const allCategories = [
   { id: "programming", title: "Programming", icon: Code, color: "#FF6B6B" },
   { id: "history", title: "History", icon: History, color: "#4ECDC4" },
   { id: "art", title: "Art & Design", icon: Palette, color: "#9D50BB" },
