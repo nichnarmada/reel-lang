@@ -98,70 +98,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
       })
 
+      setUser(user)
+
       if (user) {
-        // Check if user document exists
-        const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, user.uid)
-        const userSnapshot = await userDoc.get()
+        try {
+          // Check if user document exists
+          const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, user.uid)
+          const userSnapshot = await userDoc.get()
 
-        if (!userSnapshot.exists) {
-          console.log("[Auth] Creating new user document")
-          // If user document doesn't exist, create it with default values
-          const defaultStats: UserStats = {
-            totalLearningTime: 0,
-            sessionsCompleted: 0,
-            topicsProgress: {
-              explored: [],
-              recentlyActive: [],
-            },
-            quizStats: {
-              totalQuizzes: 0,
-              averageScore: 0,
-              bestScore: 0,
-              completionRate: 0,
-            },
-            learningStreaks: {
-              current: 0,
-              longest: 0,
-              lastActiveDate: new Date().toISOString(),
-              weeklyActivity: {},
-            },
-            weeklyProgress: {
-              timeSpent: Array(7).fill(0),
-            },
+          if (!userSnapshot.exists) {
+            console.log("[Auth] Creating new user document")
+            // If user document doesn't exist, create it with default values
+            const defaultStats: UserStats = {
+              totalLearningTime: 0,
+              sessionsCompleted: 0,
+              topicsProgress: {
+                explored: [],
+                recentlyActive: [],
+              },
+              quizStats: {
+                totalQuizzes: 0,
+                averageScore: 0,
+                bestScore: 0,
+                completionRate: 0,
+              },
+              learningStreaks: {
+                current: 0,
+                longest: 0,
+                lastActiveDate: new Date().toISOString(),
+                weeklyActivity: {},
+              },
+              weeklyProgress: {
+                timeSpent: Array(7).fill(0),
+              },
+            }
+
+            const userData: Partial<User> = {
+              uid: user.uid,
+              profile: {
+                name: user.displayName || "Learner",
+                email: user.email || "",
+                photoURL: user.photoURL || undefined,
+                createdAt: Timestamp.now(),
+                lastActive: Timestamp.now(),
+              },
+              preferences: {
+                defaultSessionLength: 5,
+                topicsOfInterest: [],
+                difficultyPreference: "beginner",
+                onboarding: null,
+                preferredCategories: [],
+                skillLevels: {},
+                learningGoals: [],
+              },
+              stats: defaultStats,
+              achievements: [],
+            }
+
+            await userDoc.set(userData)
+            setHasCompletedOnboarding(false)
+          } else {
+            // Check onboarding status from existing user
+            const userData = userSnapshot.data() as User
+            const completed = !!userData.preferences?.onboarding?.completedAt
+            console.log("[Auth] Onboarding completed:", completed)
+            setHasCompletedOnboarding(completed)
           }
-
-          const userData: Partial<User> = {
-            uid: user.uid,
-            profile: {
-              name: user.displayName || "Learner",
-              email: user.email || "",
-              photoURL: user.photoURL || undefined,
-              createdAt: Timestamp.now(),
-              lastActive: Timestamp.now(),
-            },
-            preferences: {
-              defaultSessionLength: 5,
-              topicsOfInterest: [],
-              difficultyPreference: "beginner",
-              onboarding: null,
-              preferredCategories: [],
-              skillLevels: {},
-              learningGoals: [],
-            },
-            stats: defaultStats,
-            achievements: [],
-          }
-
-          await userDoc.set(userData)
+        } catch (error) {
+          console.error("[Auth] Error checking user status:", error)
           setHasCompletedOnboarding(false)
-        } else {
-          // Check onboarding status from existing user
-          await checkOnboardingStatus()
         }
       } else {
         setHasCompletedOnboarding(false)
       }
-      setUser(user)
+
       setLoading(false)
     })
 

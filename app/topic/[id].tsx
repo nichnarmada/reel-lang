@@ -24,8 +24,11 @@ import {
   X,
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
-import { FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
-import firestore from "@react-native-firebase/firestore"
+import {
+  getCollection,
+  FIREBASE_COLLECTIONS,
+} from "../../utils/firebase/config"
+import { Timestamp } from "@react-native-firebase/firestore"
 
 const WINDOW_WIDTH = Dimensions.get("window").width
 
@@ -98,16 +101,15 @@ export default function TopicDetailsScreen() {
 
     try {
       // Create a new session document
-      const sessionRef = firestore()
-        .collection(FIREBASE_COLLECTIONS.SESSIONS)
-        .doc()
+      const sessionsCollection = getCollection(FIREBASE_COLLECTIONS.SESSIONS)
+      const sessionRef = sessionsCollection.doc()
       await sessionRef.set({
         id: sessionRef.id,
         userId: user.uid,
         topicId: topic.id,
         topicName: topic.name,
         status: "active",
-        startTime: firestore.Timestamp.now(),
+        startTime: Timestamp.now(),
         duration: duration,
       })
 
