@@ -9,6 +9,7 @@ import {
   TextInput,
   Platform,
   Image,
+  ActivityIndicator,
 } from "react-native"
 import { router } from "expo-router"
 import { useAuth } from "../../contexts/auth"
@@ -18,10 +19,16 @@ import { ErrorMessage } from "../../components/ErrorMessage"
 import { Search, Shuffle } from "lucide-react-native"
 import { Topic } from "../../types/topic"
 import { allTopics } from "@/constants/topics"
+import { useUserPreferences } from "../../hooks/useUserPreferences"
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
   const { topics, loading, error, searchTopics, refreshTopics } = useTopics()
+  const {
+    preferences,
+    loading: userPreferencesLoading,
+    error: userPreferencesError,
+  } = useUserPreferences(user?.uid || "")
 
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Topic[]>([])
@@ -87,6 +94,12 @@ export default function DiscoverScreen() {
       onRefresh()
     }
   }, [user])
+
+  const suggestedTopicsForUser =
+    preferences?.preferredCategories
+      ?.map((categoryId) => allTopics.find((topic) => topic.id === categoryId))
+      .filter((topic): topic is NonNullable<typeof topic> => Boolean(topic)) ||
+    []
 
   if (loading) {
     return (
@@ -154,7 +167,7 @@ export default function DiscoverScreen() {
           {/* Suggested Topics */}
           <View style={styles.suggestedTopics}>
             <View style={styles.topicBadges}>
-              {suggestedTopics.map((topic) => (
+              {suggestedTopicsForUser.map((topic) => (
                 <TouchableOpacity
                   key={topic.id}
                   style={[

@@ -25,7 +25,7 @@ export const useUserPreferences = (userId: string) => {
 
       const userData = userDoc.data()
       setPreferences(userData?.preferences || null)
-      return userData?.preferences || null
+      return userData?.preferences
     } catch (err) {
       console.error("Error fetching preferences:", err)
       setError(
@@ -37,10 +37,9 @@ export const useUserPreferences = (userId: string) => {
     }
   }, [userId])
 
-  // Fetch preferences on mount and when userId changes
   useEffect(() => {
     fetchPreferences()
-  }, [userId, fetchPreferences])
+  }, [fetchPreferences])
 
   const savePreferences = useCallback(
     async (preferences: Partial<UserPreferences>) => {
