@@ -18,6 +18,7 @@ import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../../hooks/useUserPreferences"
 import { useTopicSuggestions } from "../../hooks/useTopicSuggestions"
 import { colorManager } from "../../constants/categoryColors"
+import { GeneratedTopic } from "../../types/topic"
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
@@ -59,7 +60,7 @@ export default function DiscoverScreen() {
   }
 
   // Function to handle topic selection
-  const handleTopicSelect = (topic: any) => {
+  const handleTopicSelect = (topic: GeneratedTopic) => {
     // Generate a consistent ID for the topic
     const topicId = `${topic.category}-${topic.name
       .toLowerCase()
@@ -77,10 +78,16 @@ export default function DiscoverScreen() {
         emoji: topic.emoji,
         reasonForSuggestion: topic.reasonForSuggestion,
         confidence: topic.confidence.toString(),
-        searchTerms: topic.searchTerms,
-        relatedTopics: topic.relatedTopics,
+        searchTerms: JSON.stringify(topic.searchTerms),
+        relatedTopics: JSON.stringify(topic.relatedTopics),
       },
     })
+  }
+
+  // Handle search submission
+  const handleSearchSubmit = () => {
+    // TODO: Implement search functionality
+    console.log("Search submitted:", searchQuery)
   }
 
   const onRefresh = async () => {
@@ -166,7 +173,7 @@ export default function DiscoverScreen() {
               onChangeText={setSearchQuery}
               placeholder="e.g. 'Python programming' or 'Ancient Egypt'"
               placeholderTextColor="#888"
-              onSubmitEditing={handleTopicSelect}
+              onSubmitEditing={handleSearchSubmit}
               returnKeyType="search"
             />
           </View>

@@ -56,13 +56,16 @@ export default function ProfileScreen() {
       {/* Learning Preferences */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Learning Preferences</Text>
-        <View style={styles.settingItem}>
+        <TouchableOpacity
+          style={styles.settingItem}
+          onPress={() => router.push("/(profile)/topics-of-interest")}
+        >
           <View style={styles.settingLeft}>
             <BookOpen size={24} color="#666" />
             <Text style={styles.settingText}>Topics of Interest</Text>
           </View>
           <ChevronRight size={20} color="#666" />
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.settingItem}
           onPress={() => router.push("/saved-videos")}
