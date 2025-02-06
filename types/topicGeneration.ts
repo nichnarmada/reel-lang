@@ -1,5 +1,5 @@
 import { DifficultyLevel, Timestamp } from "."
-import { Topic } from "./topic"
+import { GeneratedTopic } from "./topic"
 
 export interface TopicGenerationInput {
   userId: string
@@ -9,8 +9,8 @@ export interface TopicGenerationInput {
   topicsPerCategory?: number
 }
 
-export interface GeneratedTopicSuggestion extends Omit<Topic, "id"> {
-  emoji?: string // Optional emoji for the topic
+export interface GeneratedTopicSuggestion extends Omit<GeneratedTopic, "id"> {
+  emoji: string // Emoji for the topic
   confidence: number
   reasonForSuggestion: string
   suggestedAt: Timestamp

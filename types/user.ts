@@ -1,4 +1,4 @@
-import { DifficultyLevel, Timestamp } from "."
+import { Timestamp } from "."
 import { GeneratedTopic } from "./topic"
 
 export interface UserProfile {

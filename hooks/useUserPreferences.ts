@@ -1,16 +1,25 @@
 import { useState, useCallback, useEffect } from "react"
 import { getDocument, getCollection } from "../utils/firebase/config"
 import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
-import { UserPreferences } from "../types/user"
-import { Timestamp } from "@react-native-firebase/firestore"
+import { UserPreferences, UserProfile } from "../types/user"
+import { Timestamp, setDoc } from "@react-native-firebase/firestore"
+import { useAuth } from "../contexts/auth"
+
+const DEFAULT_PREFERENCES: UserPreferences = {
+  defaultSessionLength: 5,
+  onboarding: null,
+  preferredCategories: [],
+  learningGoals: [],
+}
 
 export const useUserPreferences = (userId: string) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
+  const { user } = useAuth()
 
   const fetchPreferences = useCallback(async () => {
-    if (!userId) return null
+    if (!userId || !user) return null
 
     setLoading(true)
     setError(null)
@@ -19,12 +28,24 @@ export const useUserPreferences = (userId: string) => {
       const userSnapshot = await userDoc.get()
 
       if (!userSnapshot.exists) {
-        throw new Error("User document not found")
+        // Create user document with default preferences
+        const defaultUserData = {
+          preferences: DEFAULT_PREFERENCES,
+          profile: {
+            name: user.displayName || "Learner",
+            email: user.email || "",
+            createdAt: Timestamp.now(),
+            lastActive: Timestamp.now(),
+          } as UserProfile,
+        }
+        await setDoc(userDoc, defaultUserData)
+        setPreferences(DEFAULT_PREFERENCES)
+        return DEFAULT_PREFERENCES
       }
 
       const userData = userSnapshot.data()
-      setPreferences(userData?.preferences || null)
-      return userData?.preferences
+      setPreferences(userData?.preferences || DEFAULT_PREFERENCES)
+      return userData?.preferences || DEFAULT_PREFERENCES
     } catch (err) {
       console.error("Error fetching preferences:", err)
       setError(
@@ -34,7 +55,7 @@ export const useUserPreferences = (userId: string) => {
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [userId, user])
 
   useEffect(() => {
     fetchPreferences()
@@ -82,10 +103,8 @@ export const useUserPreferences = (userId: string) => {
             completedAt: Timestamp.now(),
             selectedInterests: selectedCategories.map((categoryId) => ({
               categoryId,
-              skillLevel: "beginner",
               subInterests: [],
             })),
-            learningGoals: [], // Empty array since we're not using goals yet
           },
         })
       } catch (err) {
