@@ -1,12 +1,11 @@
-import { initializeApp, getApp } from "@react-native-firebase/app"
 import {
-  initializeFirestore,
   getFirestore,
   collection,
   doc,
   getDocs,
+  setDocs,
 } from "@react-native-firebase/firestore"
-import { initializeAuth, getAuth } from "@react-native-firebase/auth"
+import { getAuth } from "@react-native-firebase/auth"
 
 // Firebase collection names
 export const FIREBASE_COLLECTIONS = {
@@ -36,4 +35,4 @@ export const getDocument = (
 ) => doc(firestore, collectionName, docId)
 
 // Export configured instances and helpers
-export { auth, firestore, collection, doc, getDocs }
+export { auth, firestore, collection, doc, getDocs, setDocs }

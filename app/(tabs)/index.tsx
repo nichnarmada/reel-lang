@@ -8,7 +8,6 @@ import {
   RefreshControl,
   TextInput,
   Platform,
-  Image,
   ActivityIndicator,
 } from "react-native"
 import { router } from "expo-router"
@@ -20,15 +19,30 @@ import { Search, Shuffle } from "lucide-react-native"
 import { Topic } from "../../types/topic"
 import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../../hooks/useUserPreferences"
+import { useTopicSuggestions } from "../../hooks/useTopicSuggestions"
+import { colorManager } from "../../constants/categoryColors"
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
-  const { topics, loading, error, searchTopics, refreshTopics } = useTopics()
+  const {
+    topics,
+    loading: topicsLoading,
+    error: topicsError,
+    searchTopics,
+    refreshTopics,
+  } = useTopics()
   const {
     preferences,
     loading: userPreferencesLoading,
     error: userPreferencesError,
   } = useUserPreferences(user?.uid || "")
+  const {
+    displayedSuggestions,
+    loading: topicSuggestionsLoading,
+    errors: topicSuggestionsErrors,
+    shuffleSuggestions,
+    refreshSuggestions: refreshTopicSuggestions,
+  } = useTopicSuggestions(user?.uid || "")
 
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Topic[]>([])
@@ -56,9 +70,9 @@ export default function DiscoverScreen() {
   }
 
   // Function to handle topic selection
-  const handleTopicSelect = (topic: string) => {
-    // Convert topic title to id format (lowercase, hyphenated)
-    const topicId = topic.toLowerCase().replace(/\s+/g, "-")
+  const handleTopicSelect = (topicName: string) => {
+    // Convert topic name to id format (lowercase, hyphenated)
+    const topicId = topicName.toLowerCase().replace(/\s+/g, "-")
     router.push(`/topic/${topicId}`)
   }
 
@@ -78,11 +92,11 @@ export default function DiscoverScreen() {
   const onRefresh = async () => {
     setRefreshing(true)
     try {
-      await refreshTopics()
+      await Promise.all([refreshTopics(), refreshTopicSuggestions()])
     } catch (err) {
-      console.error("Error refreshing topics:", err)
+      console.error("Error refreshing content:", err)
       setLoadError(
-        err instanceof Error ? err.message : "Failed to refresh topics"
+        err instanceof Error ? err.message : "Failed to refresh content"
       )
     } finally {
       setRefreshing(false)
@@ -95,15 +109,18 @@ export default function DiscoverScreen() {
     }
   }, [user])
 
-  const suggestedTopicsForUser =
-    preferences?.preferredCategories
-      ?.map((categoryId) =>
-        allCategories.find((topic) => topic.id === categoryId)
-      )
-      .filter((topic): topic is NonNullable<typeof topic> => Boolean(topic)) ||
-    []
+  // Combine loading states
+  const isLoading =
+    topicsLoading || userPreferencesLoading || topicSuggestionsLoading
 
-  if (loading) {
+  // Combine error states
+  const combinedError =
+    topicsError ||
+    userPreferencesError ||
+    topicSuggestionsErrors.general ||
+    loadError
+
+  if (isLoading) {
     return (
       <View style={styles.centerContainer}>
         <LoadingSpinner />
@@ -114,12 +131,10 @@ export default function DiscoverScreen() {
     )
   }
 
-  if (error || loadError) {
+  if (combinedError) {
     return (
       <View style={styles.centerContainer}>
-        <ErrorMessage
-          message={error || loadError || "An unexpected error occurred"}
-        />
+        <ErrorMessage message={combinedError} />
         <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -166,33 +181,39 @@ export default function DiscoverScreen() {
             />
           </View>
 
-          {/* Suggested Topics */}
+          {/* AI Generated Topic Suggestions */}
           <View style={styles.suggestedTopics}>
             <View style={styles.topicBadges}>
-              {suggestedTopicsForUser.map((topic) => (
-                <TouchableOpacity
-                  key={topic.id}
-                  style={[
-                    styles.topicBadge,
-                    { backgroundColor: topic.color + "15" },
-                  ]}
-                  onPress={() => handleTopicSelect(topic.title)}
-                  accessibilityLabel={`Select ${topic.title} as a learning goal`}
-                >
-                  <topic.icon
-                    size={16}
-                    color={topic.color}
-                    style={styles.topicBadgeIcon}
-                  />
-                  <Text style={[styles.topicBadgeText, { color: topic.color }]}>
-                    {topic.title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {displayedSuggestions.map((topic) => {
+                const colors = colorManager.getNextColor()
+                return (
+                  <TouchableOpacity
+                    key={`${topic.category}-${topic.name}`}
+                    style={[
+                      styles.topicBadge,
+                      { backgroundColor: colors.background },
+                    ]}
+                    onPress={() => handleTopicSelect(topic.name)}
+                    accessibilityLabel={`Learn about ${topic.name}`}
+                  >
+                    {topic.emoji && (
+                      <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+                    )}
+                    <Text
+                      style={[styles.topicBadgeText, { color: colors.text }]}
+                    >
+                      {topic.name}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
             <TouchableOpacity
               style={styles.shuffleButton}
-              onPress={refreshSuggestions}
+              onPress={() => {
+                colorManager.reset() // Reset color pool when shuffling
+                shuffleSuggestions()
+              }}
               accessibilityLabel="Show different topics"
             >
               <Text style={styles.shuffleText}>Discover something new</Text>
@@ -448,5 +469,9 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: "center",
     justifyContent: "center",
+  },
+  topicEmoji: {
+    fontSize: 16,
+    marginRight: 6,
   },
 })
