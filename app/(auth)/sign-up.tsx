@@ -8,6 +8,7 @@ import {
 import { useState } from "react"
 import { useRouter } from "expo-router"
 import { useAuth } from "../../contexts/auth"
+import { GoogleIcon } from "../../components/icons/GoogleIcon"
 
 export default function SignUp() {
   const [email, setEmail] = useState("")
@@ -31,19 +32,22 @@ export default function SignUp() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign Up</Text>
+      <Text style={styles.title}>Create Account</Text>
+      <Text style={styles.subtitle}>Sign up to get started</Text>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
+      <Text style={styles.label}>Email</Text>
       <TextInput
         style={styles.input}
-        placeholder="Email"
+        placeholder="m@example.com"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
       />
 
+      <Text style={styles.label}>Password</Text>
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -52,6 +56,7 @@ export default function SignUp() {
         secureTextEntry
       />
 
+      <Text style={styles.label}>Confirm Password</Text>
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
@@ -70,12 +75,19 @@ export default function SignUp() {
         </Text>
       </TouchableOpacity>
 
+      <View style={styles.separatorContainer}>
+        <View style={styles.separator} />
+        <Text style={styles.separatorText}>OR CONTINUE WITH</Text>
+        <View style={styles.separator} />
+      </View>
+
       <TouchableOpacity
-        style={[styles.button, styles.googleButton]}
+        style={styles.googleButton}
         onPress={handleGoogleSignUp}
         disabled={loading}
       >
-        <Text style={styles.buttonText}>
+        <GoogleIcon size={20} />
+        <Text style={styles.googleButtonText}>
           {loading ? "Signing up..." : "Sign up with Google"}
         </Text>
       </TouchableOpacity>
@@ -101,38 +113,78 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 32,
+  },
+  label: {
+    fontSize: 14,
+    marginBottom: 8,
+    fontWeight: "500",
   },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
     padding: 15,
-    marginBottom: 15,
-    borderRadius: 5,
+    marginBottom: 16,
+    borderRadius: 8,
+    fontSize: 16,
   },
   button: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#000",
     padding: 15,
-    borderRadius: 5,
-    marginBottom: 10,
-  },
-  googleButton: {
-    backgroundColor: "#4285F4",
+    borderRadius: 8,
+    marginBottom: 24,
   },
   buttonText: {
     color: "white",
     textAlign: "center",
-    fontWeight: "bold",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  separatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  separator: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ddd",
+  },
+  separatorText: {
+    marginHorizontal: 8,
+    color: "#666",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    marginBottom: 24,
+    gap: 12,
+  },
+  googleButtonText: {
+    color: "#000",
+    fontWeight: "600",
+    fontSize: 16,
   },
   link: {
     color: "#007AFF",
     textAlign: "center",
-    marginTop: 15,
+    marginTop: 8,
   },
   error: {
     color: "red",
     textAlign: "center",
-    marginBottom: 15,
+    marginBottom: 16,
   },
 })
