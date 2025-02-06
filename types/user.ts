@@ -1,4 +1,5 @@
 import { DifficultyLevel, Timestamp } from "."
+import { GeneratedTopic } from "./topic"
 
 export interface UserProfile {
   name: string
@@ -6,21 +7,6 @@ export interface UserProfile {
   photoURL?: string
   createdAt: Timestamp
   lastActive: Timestamp
-}
-
-export interface GeneratedTopic {
-  name: string
-  category: string
-  description: string
-  emoji: string
-  reasonForSuggestion: string
-  confidence: number
-  searchTerms: string[]
-  relatedTopics: string[]
-  availableDifficulties: DifficultyLevel[]
-  selectedDifficulty?: DifficultyLevel
-  createdAt: Timestamp
-  lastAccessed?: Timestamp
 }
 
 export interface UserPreferences {

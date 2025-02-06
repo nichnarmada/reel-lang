@@ -11,8 +11,7 @@ import {
   Dimensions,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
-import { useTopics } from "../../contexts/topics"
-import { Topic } from "../../types/topic"
+import { GeneratedTopic } from "../../types/user"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
 import {
@@ -30,8 +29,6 @@ import {
   firestore,
 } from "../../utils/firebase/config"
 import { Timestamp, doc, updateDoc } from "@react-native-firebase/firestore"
-import { GeneratedTopicSuggestion } from "../../types/topicGeneration"
-import { GeneratedTopic } from "../../types/user"
 import { DifficultyLevel } from "../../types"
 import { SessionDuration } from "@/types/session"
 
@@ -44,12 +41,11 @@ interface TopicDetailsParams {
   name?: string
 }
 
-type DisplayTopic = Topic | (GeneratedTopicSuggestion & { id: string })
+type DisplayTopic = GeneratedTopic & { id: string }
 
 export default function TopicDetailsScreen() {
   const params = useLocalSearchParams()
   const { user } = useAuth()
-  const { topics } = useTopics()
   const [topic, setTopic] = useState<DisplayTopic | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -105,26 +101,25 @@ export default function TopicDetailsScreen() {
           }
 
           // Create a topic object directly from navigation params
-          const generatedTopic: GeneratedTopicSuggestion & { id: string } = {
+          const generatedTopic: DisplayTopic = {
             id,
             name,
             category,
-            categoryPath: [category],
             description: String(params.description || "Loading description..."),
-            availableDifficulties: ["beginner", "intermediate", "advanced"],
-            confidence: Number(params.confidence || 1),
+            emoji: String(params.emoji || "🎯"),
             reasonForSuggestion: String(
               params.reasonForSuggestion || "AI-generated topic"
             ),
-            suggestedAt: Timestamp.now(),
+            confidence: Number(params.confidence || 1),
             searchTerms: Array.isArray(params.searchTerms)
               ? params.searchTerms
               : [],
             relatedTopics: Array.isArray(params.relatedTopics)
               ? params.relatedTopics
               : [],
-            popularity: 0,
-            emoji: String(params.emoji || "🎯"),
+            availableDifficulties: ["beginner", "intermediate", "advanced"],
+            createdAt: Timestamp.now(),
+            lastAccessed: Timestamp.now(),
           }
 
           setTopic(generatedTopic)
@@ -160,11 +155,7 @@ export default function TopicDetailsScreen() {
           }
         } else {
           // Handle fixed topics (existing logic)
-          const foundTopic = topics.find((t) => t.id === String(params.id))
-          if (!foundTopic) {
-            throw new Error("Topic not found")
-          }
-          setTopic(foundTopic)
+          setError("Fixed topics are no longer supported")
         }
       } catch (err) {
         console.error("Error loading topic:", err)
@@ -184,7 +175,6 @@ export default function TopicDetailsScreen() {
     params.reasonForSuggestion,
     params.searchTerms,
     params.relatedTopics,
-    topics,
     isGenerated,
     user,
   ])

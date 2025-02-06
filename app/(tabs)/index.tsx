@@ -8,30 +8,19 @@ import {
   RefreshControl,
   TextInput,
   Platform,
-  ActivityIndicator,
 } from "react-native"
 import { router } from "expo-router"
 import { useAuth } from "../../contexts/auth"
-import { useTopics } from "../../contexts/topics"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
 import { Search, Shuffle } from "lucide-react-native"
-import { Topic } from "../../types/topic"
 import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../../hooks/useUserPreferences"
 import { useTopicSuggestions } from "../../hooks/useTopicSuggestions"
 import { colorManager } from "../../constants/categoryColors"
-import { GeneratedTopicSuggestion } from "../../types/topicGeneration"
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
-  const {
-    topics,
-    loading: topicsLoading,
-    error: topicsError,
-    searchTopics,
-    refreshTopics,
-  } = useTopics()
   const {
     preferences,
     loading: userPreferencesLoading,
@@ -46,7 +35,6 @@ export default function DiscoverScreen() {
   } = useTopicSuggestions(user?.uid || "")
 
   const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<Topic[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -71,7 +59,7 @@ export default function DiscoverScreen() {
   }
 
   // Function to handle topic selection
-  const handleTopicSelect = (topic: GeneratedTopicSuggestion) => {
+  const handleTopicSelect = (topic: any) => {
     // Generate a consistent ID for the topic
     const topicId = `${topic.category}-${topic.name
       .toLowerCase()
@@ -95,23 +83,10 @@ export default function DiscoverScreen() {
     })
   }
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return
-    try {
-      const results = await searchTopics(searchQuery.trim())
-      setSearchResults(results)
-    } catch (err) {
-      console.error("Error searching topics:", err)
-      setLoadError(
-        err instanceof Error ? err.message : "Failed to search topics"
-      )
-    }
-  }
-
   const onRefresh = async () => {
     setRefreshing(true)
     try {
-      await Promise.all([refreshTopics(), refreshTopicSuggestions()])
+      await refreshTopicSuggestions()
     } catch (err) {
       console.error("Error refreshing content:", err)
       setLoadError(
@@ -129,15 +104,11 @@ export default function DiscoverScreen() {
   }, [user])
 
   // Combine loading states
-  const isLoading =
-    topicsLoading || userPreferencesLoading || topicSuggestionsLoading
+  const isLoading = userPreferencesLoading || topicSuggestionsLoading
 
   // Combine error states
   const combinedError =
-    topicsError ||
-    userPreferencesError ||
-    topicSuggestionsErrors.general ||
-    loadError
+    userPreferencesError || topicSuggestionsErrors.general || loadError
 
   if (isLoading) {
     return (
@@ -195,7 +166,7 @@ export default function DiscoverScreen() {
               onChangeText={setSearchQuery}
               placeholder="e.g. 'Python programming' or 'Ancient Egypt'"
               placeholderTextColor="#888"
-              onSubmitEditing={handleSearch}
+              onSubmitEditing={handleTopicSelect}
               returnKeyType="search"
             />
           </View>
