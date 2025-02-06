@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../contexts/auth"
-import firestore from "@react-native-firebase/firestore"
+import { getCollection, getDocument } from "../utils/firebase/config"
 import { SavedVideo } from "../types/user"
 import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 import { getVideoThumbnail } from "../utils/pexels"
+import {
+  Timestamp,
+  FirebaseFirestoreTypes,
+} from "@react-native-firebase/firestore"
 
 export function useSavedVideos() {
   const { user } = useAuth()
@@ -18,8 +22,10 @@ export function useSavedVideos() {
       return
     }
 
-    const unsubscribe = firestore()
-      .collection(FIREBASE_COLLECTIONS.SAVED_VIDEOS)
+    const savedVideosCollection = getCollection(
+      FIREBASE_COLLECTIONS.SAVED_VIDEOS
+    )
+    const unsubscribe = savedVideosCollection
       .where("userId", "==", user.uid)
       .orderBy("savedAt", "desc")
       .onSnapshot(
@@ -83,9 +89,10 @@ export function useSavedVideos() {
     if (!user) return
 
     try {
-      const savedVideoRef = firestore()
-        .collection(FIREBASE_COLLECTIONS.SAVED_VIDEOS)
-        .doc()
+      const savedVideosCollection = getCollection(
+        FIREBASE_COLLECTIONS.SAVED_VIDEOS
+      )
+      const savedVideoRef = savedVideosCollection.doc()
 
       // If no thumbnail provided, try to fetch it from Pexels
       let thumbnail = videoInfo.thumbnail
@@ -106,25 +113,20 @@ export function useSavedVideos() {
         duration: videoInfo.duration,
         topicId: videoInfo.topicId,
         topicName: videoInfo.topicName,
-        savedAt: firestore.Timestamp.now().toDate().toISOString(),
+        savedAt: Timestamp.now().toDate().toISOString(),
       }
 
       await savedVideoRef.set(savedVideo)
 
       // Try to update video engagement counter if the video exists
       try {
-        const videoDoc = await firestore()
-          .collection(FIREBASE_COLLECTIONS.VIDEOS)
-          .doc(videoInfo.id)
-          .get()
+        const videoDoc = getDocument(FIREBASE_COLLECTIONS.VIDEOS, videoInfo.id)
+        const videoSnapshot = await videoDoc.get()
 
-        if (videoDoc.exists) {
-          await firestore()
-            .collection(FIREBASE_COLLECTIONS.VIDEOS)
-            .doc(videoInfo.id)
-            .update({
-              "engagement.saves": firestore.FieldValue.increment(1),
-            })
+        if (videoSnapshot.exists) {
+          await videoDoc.update({
+            "engagement.saves": FirebaseFirestoreTypes.FieldValue.increment(1),
+          })
         }
       } catch (engagementErr) {
         // Ignore engagement update errors - the video might be from an external source
@@ -143,25 +145,21 @@ export function useSavedVideos() {
     if (!user) return
 
     try {
-      await firestore()
-        .collection(FIREBASE_COLLECTIONS.SAVED_VIDEOS)
-        .doc(savedVideoId)
-        .delete()
+      const savedVideoDoc = getDocument(
+        FIREBASE_COLLECTIONS.SAVED_VIDEOS,
+        savedVideoId
+      )
+      await savedVideoDoc.delete()
 
       // Try to update video engagement counter if the video exists
       try {
-        const videoDoc = await firestore()
-          .collection(FIREBASE_COLLECTIONS.VIDEOS)
-          .doc(videoId)
-          .get()
+        const videoDoc = getDocument(FIREBASE_COLLECTIONS.VIDEOS, videoId)
+        const videoSnapshot = await videoDoc.get()
 
-        if (videoDoc.exists) {
-          await firestore()
-            .collection(FIREBASE_COLLECTIONS.VIDEOS)
-            .doc(videoId)
-            .update({
-              "engagement.saves": firestore.FieldValue.increment(-1),
-            })
+        if (videoSnapshot.exists) {
+          await videoDoc.update({
+            "engagement.saves": FirebaseFirestoreTypes.FieldValue.increment(-1),
+          })
         }
       } catch (engagementErr) {
         // Ignore engagement update errors - the video might be from an external source

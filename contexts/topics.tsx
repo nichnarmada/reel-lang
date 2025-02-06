@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react"
-import { firestore } from "../utils/firebase/config"
-import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
+import {
+  getCollection,
+  getDocs,
+  FIREBASE_COLLECTIONS,
+} from "../utils/firebase/config"
 import { Topic } from "../types/topic"
 import { useAuth } from "./auth"
 
@@ -34,9 +37,8 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const topicsSnapshot = await firestore()
-        .collection(FIREBASE_COLLECTIONS.TOPICS)
-        .get()
+      const topicsCollection = getCollection(FIREBASE_COLLECTIONS.TOPICS)
+      const topicsSnapshot = await getDocs(topicsCollection)
 
       const topicsData = topicsSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -56,10 +58,10 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
   const searchTopics = async (query: string): Promise<Topic[]> => {
     try {
       const searchTerms = query.toLowerCase().split(" ")
-      const topicsSnapshot = await firestore()
-        .collection(FIREBASE_COLLECTIONS.TOPICS)
-        .where("searchTerms", "array-contains-any", searchTerms)
-        .get()
+      const topicsCollection = getCollection(FIREBASE_COLLECTIONS.TOPICS)
+      const topicsSnapshot = await getDocs(
+        topicsCollection.where("searchTerms", "array-contains-any", searchTerms)
+      )
 
       return topicsSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -74,10 +76,10 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
   // Get topics by category
   const getTopicsByCategory = async (category: string): Promise<Topic[]> => {
     try {
-      const topicsSnapshot = await firestore()
-        .collection(FIREBASE_COLLECTIONS.TOPICS)
-        .where("category", "==", category)
-        .get()
+      const topicsCollection = getCollection(FIREBASE_COLLECTIONS.TOPICS)
+      const topicsSnapshot = await getDocs(
+        topicsCollection.where("category", "==", category)
+      )
 
       return topicsSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -92,11 +94,10 @@ export function TopicsProvider({ children }: { children: React.ReactNode }) {
   // Get trending topics
   const getTrendingTopics = async (): Promise<Topic[]> => {
     try {
-      const topicsSnapshot = await firestore()
-        .collection(FIREBASE_COLLECTIONS.TOPICS)
-        .orderBy("popularity", "desc")
-        .limit(10)
-        .get()
+      const topicsCollection = getCollection(FIREBASE_COLLECTIONS.TOPICS)
+      const topicsSnapshot = await getDocs(
+        topicsCollection.orderBy("popularity", "desc").limit(10)
+      )
 
       return topicsSnapshot.docs.map((doc) => ({
         id: doc.id,

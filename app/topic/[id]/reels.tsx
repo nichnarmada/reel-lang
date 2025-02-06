@@ -24,10 +24,14 @@ import {
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { ErrorMessage } from "../../../components/ErrorMessage"
 import analytics from "@react-native-firebase/analytics"
-import firestore from "@react-native-firebase/firestore"
+import {
+  getCollection,
+  getDocument,
+  FIREBASE_COLLECTIONS,
+} from "../../../utils/firebase/config"
 import { useAuth } from "../../../contexts/auth"
-import { FIREBASE_COLLECTIONS } from "../../../utils/firebase/config"
 import { SAMPLE_QUESTIONS } from "../../../constants/quiz"
+import { Timestamp } from "@react-native-firebase/firestore"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT
@@ -59,16 +63,18 @@ export default function ReelsScreen() {
 
     try {
       // Update session status to completed
-      await firestore()
-        .collection(FIREBASE_COLLECTIONS.SESSIONS)
-        .doc(currentSessionId)
-        .update({
-          status: "completed",
-          completedAt: firestore.Timestamp.now(),
-        })
+      const sessionDoc = getDocument(
+        FIREBASE_COLLECTIONS.SESSIONS,
+        currentSessionId
+      )
+      await sessionDoc.update({
+        status: "completed",
+        completedAt: Timestamp.now(),
+      })
 
       // Create quiz document
-      const quizRef = firestore().collection(FIREBASE_COLLECTIONS.QUIZZES).doc()
+      const quizzesCollection = getCollection(FIREBASE_COLLECTIONS.QUIZZES)
+      const quizRef = quizzesCollection.doc()
 
       // Format questions to match our Question type
       const formattedQuestions = SAMPLE_QUESTIONS.map((question) => ({
@@ -87,7 +93,7 @@ export default function ReelsScreen() {
         questions: formattedQuestions,
         userResponses: [],
         metadata: {
-          generatedAt: firestore.Timestamp.now(),
+          generatedAt: Timestamp.now(),
           difficulty: "beginner", // TODO: Make this dynamic based on user's level
           topics: [currentTopicId],
         },

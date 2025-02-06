@@ -1,5 +1,6 @@
-import auth from "@react-native-firebase/auth"
+import { auth } from "./config"
 import { GoogleSignin } from "@react-native-google-signin/google-signin"
+import auth_module from "@react-native-firebase/auth"
 
 // Initialize Google Sign-In with the correct webClientId
 // This ID should be the one that ends with .apps.googleusercontent.com from your google-services.json
@@ -15,7 +16,7 @@ export interface AuthError {
 
 export const signInWithEmail = async (email: string, password: string) => {
   try {
-    const userCredential = await auth().signInWithEmailAndPassword(
+    const userCredential = await auth.signInWithEmailAndPassword(
       email,
       password
     )
@@ -30,7 +31,7 @@ export const signInWithEmail = async (email: string, password: string) => {
 
 export const signUpWithEmail = async (email: string, password: string) => {
   try {
-    const userCredential = await auth().createUserWithEmailAndPassword(
+    const userCredential = await auth.createUserWithEmailAndPassword(
       email,
       password
     )
@@ -57,10 +58,10 @@ export const signInWithGoogle = async () => {
     }
 
     // Create a Google credential with the token
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken)
+    const googleCredential = auth_module.GoogleAuthProvider.credential(idToken)
 
     // Sign-in with credential
-    return auth().signInWithCredential(googleCredential)
+    return auth.signInWithCredential(googleCredential)
   } catch (error: any) {
     throw {
       code: error.code,
@@ -72,7 +73,7 @@ export const signInWithGoogle = async () => {
 export const signOut = async () => {
   try {
     await GoogleSignin.signOut() // Sign out from Google
-    await auth().signOut() // Sign out from Firebase
+    await auth.signOut() // Sign out from Firebase
   } catch (error: any) {
     throw {
       code: error.code,

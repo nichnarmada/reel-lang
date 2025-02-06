@@ -11,8 +11,10 @@ import { Stack, useLocalSearchParams, router } from "expo-router"
 import { ChevronLeft } from "lucide-react-native"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { ErrorMessage } from "../../../components/ErrorMessage"
-import firestore from "@react-native-firebase/firestore"
-import { FIREBASE_COLLECTIONS } from "../../../utils/firebase/config"
+import {
+  getDocument,
+  FIREBASE_COLLECTIONS,
+} from "../../../utils/firebase/config"
 import { Question } from "../../../types/quiz"
 
 export default function QuizScreen() {
@@ -30,16 +32,14 @@ export default function QuizScreen() {
     const loadQuiz = async () => {
       try {
         const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
-        const quizDoc = await firestore()
-          .collection(FIREBASE_COLLECTIONS.QUIZZES)
-          .doc(currentQuizId)
-          .get()
+        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
+        const quizSnapshot = await quizDoc.get()
 
-        if (!quizDoc.exists) {
+        if (!quizSnapshot.exists) {
           throw new Error("Quiz not found")
         }
 
-        const quizData = quizDoc.data()
+        const quizData = quizSnapshot.data()
         setQuestions(quizData?.questions || [])
 
         // Set start time for first question
@@ -103,12 +103,10 @@ export default function QuizScreen() {
       try {
         // Update quiz document with responses
         const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
-        await firestore()
-          .collection(FIREBASE_COLLECTIONS.QUIZZES)
-          .doc(currentQuizId)
-          .update({
-            userResponses,
-          })
+        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
+        await quizDoc.update({
+          userResponses,
+        })
 
         // Navigate to results
         const currentSessionId = Array.isArray(sessionId)

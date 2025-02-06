@@ -13,9 +13,9 @@ import {
   signOut as firebaseSignOut,
   AuthError,
 } from "../utils/firebase/auth"
-import firestore from "@react-native-firebase/firestore"
-import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
+import { getDocument, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 import { User, UserStats } from "../types/user"
+import { Timestamp } from "@react-native-firebase/firestore"
 
 interface AuthContextType {
   user: FirebaseAuthTypes.User | null
@@ -43,17 +43,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return false
 
     try {
-      const userDoc = await firestore()
-        .collection(FIREBASE_COLLECTIONS.USERS)
-        .doc(user.uid)
-        .get()
+      console.log("[Auth] Checking onboarding status for user:", user.uid)
 
-      if (!userDoc.exists) {
+      const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, user.uid)
+      const userSnapshot = await userDoc.get()
+
+      if (!userSnapshot.exists) {
+        console.log("[Auth] User document does not exist")
         return false
       }
 
-      const userData = userDoc.data() as User
+      const userData = userSnapshot.data() as User
+      console.log("[Auth] User preferences:", {
+        preferences: userData.preferences,
+        onboarding: userData.preferences?.onboarding,
+        completedAt: userData.preferences?.onboarding?.completedAt,
+      })
+
       const completed = !!userData.preferences?.onboarding?.completedAt
+      console.log("[Auth] Onboarding completed:", completed)
 
       setHasCompletedOnboarding(completed)
       return completed
@@ -68,14 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       // Update Firestore
-      await firestore()
-        .collection(FIREBASE_COLLECTIONS.USERS)
-        .doc(user.uid)
-        .update({
-          "preferences.onboarding": {
-            completedAt: firestore.Timestamp.now(),
-          },
-        })
+      const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, user.uid)
+      await userDoc.update({
+        "preferences.onboarding": {
+          completedAt: Timestamp.now(),
+        },
+      })
 
       // Update local state
       setHasCompletedOnboarding(true)
@@ -87,15 +93,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged(async (user) => {
+      console.log("[Auth] Auth state changed:", {
+        userId: user?.uid,
+        isAuthenticated: !!user,
+      })
+
       if (user) {
         // Check if user document exists
-        const userDoc = await firestore()
-          .collection(FIREBASE_COLLECTIONS.USERS)
-          .doc(user.uid)
-          .get()
+        const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, user.uid)
+        const userSnapshot = await userDoc.get()
 
-        // If user document doesn't exist, create it with default values
-        if (!userDoc.exists) {
+        if (!userSnapshot.exists) {
+          console.log("[Auth] Creating new user document")
+          // If user document doesn't exist, create it with default values
           const defaultStats: UserStats = {
             totalLearningTime: 0,
             sessionsCompleted: 0,
@@ -126,8 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               name: user.displayName || "Learner",
               email: user.email || "",
               photoURL: user.photoURL || undefined,
-              createdAt: firestore.Timestamp.now(),
-              lastActive: firestore.Timestamp.now(),
+              createdAt: Timestamp.now(),
+              lastActive: Timestamp.now(),
             },
             preferences: {
               defaultSessionLength: 5,
@@ -142,11 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             achievements: [],
           }
 
-          await firestore()
-            .collection(FIREBASE_COLLECTIONS.USERS)
-            .doc(user.uid)
-            .set(userData)
-
+          await userDoc.set(userData)
           setHasCompletedOnboarding(false)
         } else {
           // Check onboarding status from existing user

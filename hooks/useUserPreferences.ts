@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react"
-import firestore from "@react-native-firebase/firestore"
+import { getDocument, getCollection } from "../utils/firebase/config"
 import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 import { UserPreferences } from "../types/user"
+import { Timestamp } from "@react-native-firebase/firestore"
 
 export const useUserPreferences = (userId: string) => {
   const [loading, setLoading] = useState(false)
@@ -14,16 +15,14 @@ export const useUserPreferences = (userId: string) => {
     setLoading(true)
     setError(null)
     try {
-      const userDoc = await firestore()
-        .collection(FIREBASE_COLLECTIONS.USERS)
-        .doc(userId)
-        .get()
+      const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, userId)
+      const userSnapshot = await userDoc.get()
 
-      if (!userDoc.exists) {
+      if (!userSnapshot.exists) {
         throw new Error("User document not found")
       }
 
-      const userData = userDoc.data()
+      const userData = userSnapshot.data()
       setPreferences(userData?.preferences || null)
       return userData?.preferences
     } catch (err) {
@@ -46,20 +45,18 @@ export const useUserPreferences = (userId: string) => {
       setLoading(true)
       setError(null)
       try {
-        const userRef = firestore()
-          .collection(FIREBASE_COLLECTIONS.USERS)
-          .doc(userId)
+        const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, userId)
 
         // Get existing user data first
-        const userDoc = await userRef.get()
-        if (!userDoc.exists) {
+        const userSnapshot = await userDoc.get()
+        if (!userSnapshot.exists) {
           throw new Error("User document not found")
         }
 
         // Update preferences field directly
-        await userRef.update({
+        await userDoc.update({
           preferences: {
-            ...userDoc.data()?.preferences,
+            ...userSnapshot.data()?.preferences,
             ...preferences,
           },
         })
@@ -82,7 +79,7 @@ export const useUserPreferences = (userId: string) => {
         await savePreferences({
           preferredCategories: selectedCategories,
           onboarding: {
-            completedAt: firestore.Timestamp.now(),
+            completedAt: Timestamp.now(),
             selectedInterests: selectedCategories.map((categoryId) => ({
               categoryId,
               skillLevel: "beginner",

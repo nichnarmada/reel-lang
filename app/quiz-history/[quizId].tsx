@@ -10,8 +10,7 @@ import {
 import { useLocalSearchParams, router } from "expo-router"
 import { ChevronLeft } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
-import firestore from "@react-native-firebase/firestore"
-import { FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
+import { getDocument, FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
 import { Quiz, Question, UserResponse } from "../../types/quiz"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
@@ -34,24 +33,23 @@ export default function QuizDetailScreen() {
 
       try {
         const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
-        const quizDoc = await firestore()
-          .collection(FIREBASE_COLLECTIONS.QUIZZES)
-          .doc(currentQuizId)
-          .get()
+        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
+        const quizSnapshot = await quizDoc.get()
 
-        if (!quizDoc.exists) {
+        if (!quizSnapshot.exists) {
           throw new Error("Quiz not found")
         }
 
-        const quizData = quizDoc.data() as Quiz
-        const sessionDoc = await firestore()
-          .collection(FIREBASE_COLLECTIONS.SESSIONS)
-          .doc(quizData.sessionId)
-          .get()
+        const quizData = quizSnapshot.data() as Quiz
+        const sessionDoc = getDocument(
+          FIREBASE_COLLECTIONS.SESSIONS,
+          quizData.sessionId
+        )
+        const sessionSnapshot = await sessionDoc.get()
 
         setQuiz({
           ...quizData,
-          topicName: sessionDoc.data()?.topicName || "Unknown Topic",
+          topicName: sessionSnapshot.data()?.topicName || "Unknown Topic",
         })
       } catch (err) {
         console.error("Error loading quiz:", err)

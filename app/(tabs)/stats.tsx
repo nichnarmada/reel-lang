@@ -17,8 +17,7 @@ import {
   Sparkles,
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
-import firestore from "@react-native-firebase/firestore"
-import { FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
+import { getDocument, FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
 import { UserStats } from "../../types/user"
@@ -36,22 +35,20 @@ export default function StatsScreen() {
   useEffect(() => {
     if (!user) return
 
-    const unsubscribe = firestore()
-      .collection(FIREBASE_COLLECTIONS.USERS)
-      .doc(user.uid)
-      .onSnapshot(
-        (doc) => {
-          if (doc.exists) {
-            setStats(doc.data()?.stats || null)
-          }
-          setLoading(false)
-        },
-        (err) => {
-          console.error("Error loading stats:", err)
-          setError("Failed to load stats")
-          setLoading(false)
+    const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, user.uid)
+    const unsubscribe = userDoc.onSnapshot(
+      (doc) => {
+        if (doc.exists) {
+          setStats(doc.data()?.stats || null)
         }
-      )
+        setLoading(false)
+      },
+      (err) => {
+        console.error("Error loading stats:", err)
+        setError("Failed to load stats")
+        setLoading(false)
+      }
+    )
 
     return () => unsubscribe()
   }, [user])

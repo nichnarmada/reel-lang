@@ -1,6 +1,12 @@
-import auth from "@react-native-firebase/auth"
-import firebase from "@react-native-firebase/app"
-import firestore from "@react-native-firebase/firestore"
+import { initializeApp, getApp } from "@react-native-firebase/app"
+import {
+  initializeFirestore,
+  getFirestore,
+  collection,
+  doc,
+  getDocs,
+} from "@react-native-firebase/firestore"
+import { initializeAuth, getAuth } from "@react-native-firebase/auth"
 
 // Firebase collection names
 export const FIREBASE_COLLECTIONS = {
@@ -16,9 +22,18 @@ export const FIREBASE_COLLECTIONS = {
 export type FirebaseCollection =
   (typeof FIREBASE_COLLECTIONS)[keyof typeof FIREBASE_COLLECTIONS]
 
-// No need to explicitly initialize Firebase in React Native Firebase
-// It automatically initializes using the google-services.json and GoogleService-Info.plist
+// Get Firebase instances
+const auth = getAuth()
+const firestore = getFirestore()
 
-// Export configured instances
-export { auth, firestore }
-export default firebase
+// Helper functions for Firestore operations
+export const getCollection = (collectionName: FirebaseCollection) =>
+  collection(firestore, collectionName)
+
+export const getDocument = (
+  collectionName: FirebaseCollection,
+  docId: string
+) => doc(firestore, collectionName, docId)
+
+// Export configured instances and helpers
+export { auth, firestore, collection, doc, getDocs }

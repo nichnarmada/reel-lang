@@ -11,8 +11,11 @@ import {
 import { Stack, router } from "expo-router"
 import { ChevronLeft, ChevronRight } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
-import firestore from "@react-native-firebase/firestore"
-import { FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
+import {
+  getCollection,
+  getDocument,
+  FIREBASE_COLLECTIONS,
+} from "../../utils/firebase/config"
 import { Quiz } from "../../types/quiz"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
@@ -33,8 +36,8 @@ export default function QuizHistoryScreen() {
     if (!user) return
 
     try {
-      const quizSnapshot = await firestore()
-        .collection(FIREBASE_COLLECTIONS.QUIZZES)
+      const quizzesCollection = getCollection(FIREBASE_COLLECTIONS.QUIZZES)
+      const quizSnapshot = await quizzesCollection
         .where("userId", "==", user.uid)
         .orderBy("metadata.generatedAt", "desc")
         .get()
@@ -43,14 +46,15 @@ export default function QuizHistoryScreen() {
         quizSnapshot.docs.map(async (doc) => {
           const quiz = doc.data() as Quiz
           // Fetch topic name from session
-          const sessionDoc = await firestore()
-            .collection(FIREBASE_COLLECTIONS.SESSIONS)
-            .doc(quiz.sessionId)
-            .get()
+          const sessionDoc = getDocument(
+            FIREBASE_COLLECTIONS.SESSIONS,
+            quiz.sessionId
+          )
+          const sessionSnapshot = await sessionDoc.get()
 
           return {
             ...quiz,
-            topicName: sessionDoc.data()?.topicName || "Unknown Topic",
+            topicName: sessionSnapshot.data()?.topicName || "Unknown Topic",
           } as QuizHistoryItem
         })
       )
