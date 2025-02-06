@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from "react"
-import { GeneratedTopicSuggestion } from "../types/topicGeneration"
+import { GeneratedTopic } from "../types/topic"
 import { generateTopicSuggestions } from "../services/topics/topicGenerator"
 import { useUserPreferences } from "./useUserPreferences"
+import { doc, setDoc } from "@react-native-firebase/firestore"
+import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
+import { UserGeneratedTopic } from "../types/user"
 
 const MAX_DISPLAYED_TOPICS = 6
 
 interface UseTopicSuggestionsResult {
-  suggestions: Record<string, GeneratedTopicSuggestion[]>
-  displayedSuggestions: GeneratedTopicSuggestion[]
+  suggestions: Record<string, GeneratedTopic>
+  displayedSuggestions: GeneratedTopic[]
   loading: boolean
   errors: Record<string, string>
   refreshSuggestions: () => Promise<void>
@@ -28,19 +31,18 @@ export const useTopicSuggestions = (
   userId: string
 ): UseTopicSuggestionsResult => {
   const [suggestions, setSuggestions] = useState<
-    Record<string, GeneratedTopicSuggestion[]>
+    Record<string, GeneratedTopic>
   >({})
   const [displayedSuggestions, setDisplayedSuggestions] = useState<
-    GeneratedTopicSuggestion[]
+    GeneratedTopic[]
   >([])
   const [loading, setLoading] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const { preferences } = useUserPreferences(userId)
 
   const getRandomTopics = useCallback(
-    (allSuggestions: Record<string, GeneratedTopicSuggestion[]>) => {
-      const allTopics = Object.values(allSuggestions).flat()
-
+    (allSuggestions: Record<string, GeneratedTopic>) => {
+      const allTopics = Object.values(allSuggestions)
       return shuffleArray(allTopics).slice(0, MAX_DISPLAYED_TOPICS)
     },
     []
@@ -49,6 +51,29 @@ export const useTopicSuggestions = (
   const shuffleSuggestions = useCallback(() => {
     setDisplayedSuggestions(getRandomTopics(suggestions))
   }, [suggestions, getRandomTopics])
+
+  const saveSuggestionToFirestore = async (
+    topic: GeneratedTopic,
+    topicId: string
+  ) => {
+    if (!userId) return
+
+    const topicRef = doc(
+      firestore,
+      FIREBASE_COLLECTIONS.USERS,
+      userId,
+      "generatedTopics",
+      topicId
+    )
+
+    const userGeneratedTopic: UserGeneratedTopic = {
+      ...topic,
+      id: topicId,
+      userId,
+    }
+
+    await setDoc(topicRef, userGeneratedTopic)
+  }
 
   const fetchSuggestions = async () => {
     try {
@@ -62,20 +87,35 @@ export const useTopicSuggestions = (
       const result = await generateTopicSuggestions({
         userId,
         preferredCategories: preferences.preferredCategories,
-        skillLevels: preferences.skillLevels,
+        skillLevels: {},
         exploredTopics: [],
       })
 
       const newErrors: Record<string, string> = {}
-      Object.entries(result).forEach(([category, categorySuggestions]) => {
-        if (categorySuggestions.length === 0) {
-          newErrors[category] =
-            "Failed to generate suggestions for this category"
-        }
-      })
+      const newSuggestions: Record<string, GeneratedTopic> = {}
 
-      setSuggestions(result)
-      setDisplayedSuggestions(getRandomTopics(result))
+      // Process and save each suggestion
+      await Promise.all(
+        Object.entries(result).map(async ([category, categorySuggestions]) => {
+          if (categorySuggestions.length === 0) {
+            newErrors[category] =
+              "Failed to generate suggestions for this category"
+          } else {
+            await Promise.all(
+              categorySuggestions.map(async (suggestion) => {
+                const topicId = `${suggestion.category}-${suggestion.name
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")}`
+                newSuggestions[topicId] = suggestion
+                await saveSuggestionToFirestore(suggestion, topicId)
+              })
+            )
+          }
+        })
+      )
+
+      setSuggestions(newSuggestions)
+      setDisplayedSuggestions(getRandomTopics(newSuggestions))
 
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors)

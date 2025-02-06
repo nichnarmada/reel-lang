@@ -11,7 +11,8 @@ import {
   Dimensions,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
-import { GeneratedTopic } from "../../types/user"
+import { GeneratedTopic } from "../../types/topic"
+import { UserGeneratedTopic } from "../../types/user"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
 import {
@@ -28,7 +29,12 @@ import {
   FIREBASE_COLLECTIONS,
   firestore,
 } from "../../utils/firebase/config"
-import { Timestamp, doc, updateDoc } from "@react-native-firebase/firestore"
+import {
+  Timestamp,
+  doc,
+  updateDoc,
+  setDoc,
+} from "@react-native-firebase/firestore"
 import { DifficultyLevel } from "../../types"
 import { SessionDuration } from "@/types/session"
 
@@ -124,34 +130,22 @@ export default function TopicDetailsScreen() {
 
           setTopic(generatedTopic)
 
-          // Save or update the topic in user's preferences
+          // Save or update the topic in user's generatedTopics subcollection
           if (user) {
-            const userRef = doc(firestore, FIREBASE_COLLECTIONS.USERS, user.uid)
-            const topicData: GeneratedTopic = {
-              name: name,
-              category: category,
-              description: String(
-                params.description || "Loading description..."
-              ),
-              emoji: String(params.emoji || "🎯"),
-              reasonForSuggestion: String(
-                params.reasonForSuggestion || "AI-generated topic"
-              ),
-              confidence: Number(params.confidence || 1),
-              searchTerms: Array.isArray(params.searchTerms)
-                ? params.searchTerms
-                : [],
-              relatedTopics: Array.isArray(params.relatedTopics)
-                ? params.relatedTopics
-                : [],
-              availableDifficulties: ["beginner", "intermediate", "advanced"],
-              createdAt: Timestamp.now(),
-              lastAccessed: Timestamp.now(),
+            const topicRef = doc(
+              firestore,
+              FIREBASE_COLLECTIONS.USERS,
+              user.uid,
+              "generatedTopics",
+              id
+            )
+
+            const userGeneratedTopic: UserGeneratedTopic = {
+              ...generatedTopic,
+              userId: user.uid,
             }
 
-            await updateDoc(userRef, {
-              [`preferences.generatedTopics.${id}`]: topicData,
-            })
+            await setDoc(topicRef, userGeneratedTopic)
           }
         } else {
           // Handle fixed topics (existing logic)
@@ -229,12 +223,17 @@ export default function TopicDetailsScreen() {
     if (!topic || !user || !isGenerated) return
 
     try {
-      const userRef = doc(firestore, FIREBASE_COLLECTIONS.USERS, user.uid)
-      await updateDoc(userRef, {
-        [`preferences.generatedTopics.${topic.id}.selectedDifficulty`]:
-          difficulty,
-        [`preferences.generatedTopics.${topic.id}.lastAccessed`]:
-          Timestamp.now(),
+      const topicRef = doc(
+        firestore,
+        FIREBASE_COLLECTIONS.USERS,
+        user.uid,
+        "generatedTopics",
+        topic.id
+      )
+
+      await updateDoc(topicRef, {
+        selectedDifficulty: difficulty,
+        lastAccessed: Timestamp.now(),
       })
     } catch (err) {
       console.error("Error updating difficulty:", err)

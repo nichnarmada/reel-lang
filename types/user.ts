@@ -14,9 +14,12 @@ export interface UserPreferences {
   onboarding: OnboardingData | null // null if onboarding not completed
   preferredCategories: string[] // High-level categories for discovery
   learningGoals: string[]
-  generatedTopics: {
-    [topicId: string]: GeneratedTopic
-  }
+}
+
+// Collection: users/{userId}/generatedTopics/{topicId}
+export interface UserGeneratedTopic extends GeneratedTopic {
+  id: string // The document ID
+  userId: string // Reference to the user who generated this topic
 }
 
 export interface TopicProgress {

@@ -5,11 +5,10 @@ import {
   TOPIC_CACHE_DURATION,
 } from "../../utils/gemini/config"
 import {
-  GeneratedTopicSuggestion,
   PromptContext,
   TopicGenerationInput,
-  TopicSuggestionCache,
 } from "../../types/topicGeneration"
+import { GeneratedTopic } from "../../types/topic"
 import { firestore } from "../../utils/firebase/config"
 import { doc, getDoc, setDoc } from "@react-native-firebase/firestore"
 
@@ -59,18 +58,23 @@ Examples of good topic and emoji combinations:
 Return only the JSON array, no additional text or formatting.`
 }
 
+interface TopicSuggestionCache {
+  userId: string
+  categoryId: string
+  suggestions: GeneratedTopic[]
+  generatedAt: Timestamp
+  expiresAt: Timestamp
+}
+
 const processAIResponse = async (
   response: string,
   category: string
-): Promise<GeneratedTopicSuggestion[]> => {
+): Promise<GeneratedTopic[]> => {
   try {
-    // Clean the response string to ensure valid JSON
     const cleanedResponse = response
       .trim()
-      // Remove any markdown code block syntax
       .replace(/```json\s*/g, "")
       .replace(/```\s*/g, "")
-      // Remove any trailing commas before closing brackets
       .replace(/,(\s*[\]}])/g, "$1")
 
     const parsed = JSON.parse(cleanedResponse)
@@ -81,12 +85,17 @@ const processAIResponse = async (
     }
 
     return parsed.map((item: any) => ({
-      ...item,
+      name: item.name,
       category,
-      categoryPath: [category],
+      description: item.description,
+      emoji: item.emoji || "📚", // Default emoji if none provided
+      reasonForSuggestion: item.reasonForSuggestion,
+      confidence: item.confidence,
+      searchTerms: item.searchTerms || [],
+      relatedTopics: item.relatedTopics || [],
       availableDifficulties: ["beginner", "intermediate", "advanced"],
-      popularity: 0,
-      suggestedAt: Timestamp.now(),
+      createdAt: Timestamp.now(),
+      lastAccessed: Timestamp.now(),
     }))
   } catch (error) {
     console.error("Error processing AI response:", error)
@@ -98,7 +107,7 @@ const processAIResponse = async (
 const checkCache = async (
   userId: string,
   categoryId: string
-): Promise<GeneratedTopicSuggestion[] | null> => {
+): Promise<GeneratedTopic[] | null> => {
   const cacheRef = doc(firestore, CACHE_COLLECTION, `${userId}_${categoryId}`)
   const cacheDoc = await getDoc(cacheRef)
 
@@ -114,7 +123,7 @@ const checkCache = async (
 const storeSuggestionsCache = async (
   userId: string,
   categoryId: string,
-  suggestions: GeneratedTopicSuggestion[]
+  suggestions: GeneratedTopic[]
 ) => {
   const cacheRef = doc(firestore, CACHE_COLLECTION, `${userId}_${categoryId}`)
   const now = Timestamp.now()
@@ -131,7 +140,7 @@ const storeSuggestionsCache = async (
 interface CategoryGenerationResult {
   success: boolean
   error?: string
-  suggestions: GeneratedTopicSuggestion[]
+  suggestions: GeneratedTopic[]
 }
 
 const generateForCategory = async (
@@ -170,8 +179,8 @@ const generateForCategory = async (
 
 export const generateTopicSuggestions = async (
   input: TopicGenerationInput
-): Promise<Record<string, GeneratedTopicSuggestion[]>> => {
-  const result: Record<string, GeneratedTopicSuggestion[]> = {}
+): Promise<Record<string, GeneratedTopic[]>> => {
+  const result: Record<string, GeneratedTopic[]> = {}
   const errors: Record<string, string> = {}
 
   await Promise.all(
