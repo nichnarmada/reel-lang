@@ -28,6 +28,30 @@
 - As a learner, I want topic mastery tracking
 - As a learner, I want learning path recommendations
 
+### Learning Statistics Features
+
+- As a learner, I want to see my total time spent learning
+- As a learner, I want to track my learning streaks
+- As a learner, I want to view my quiz performance over time
+- As a learner, I want to know how many topics I've explored
+- As a learner, I want to see my average session completion rate
+
+### Advanced Analytics Features
+
+- As a learner, I want to identify my strongest and weakest topics
+- As a learner, I want to track my progress in each topic
+- As a learner, I want to understand my optimal learning times
+- As a learner, I want insights about my learning patterns
+- As a learner, I want to see my improvement over time
+
+### Achievement Features
+
+- As a learner, I want to earn badges for my accomplishments
+- As a learner, I want to set and track learning goals
+- As a learner, I want to celebrate learning milestones
+- As a learner, I want to maintain learning streaks
+- As a learner, I want to track my personal bests
+
 ### Additional AI Features
 
 - As a learner, I want content summaries after sessions

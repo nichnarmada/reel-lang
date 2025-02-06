@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "yarn expo start",
-    "prebuild": "yarn expo prebuild",
+    "prebuild": "yarn expo prebuild --clean",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "yarn expo run:android",
     "ios": "yarn expo run:ios",

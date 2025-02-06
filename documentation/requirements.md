@@ -45,7 +45,7 @@
 - [ ] Session scheduling
 - [ ] Basic achievements
 
-## Week 2: AI Integration
+## Week 2: AI & Analytics Integration
 
 ### Quiz Generation
 
@@ -60,6 +60,32 @@
   - Answer validation
   - Results tracking
   - Knowledge gap identification
+
+### Learning Statistics
+
+- [ ] Core Stats
+
+  - Total learning time tracking
+  - Session completion metrics
+  - Topics explored counter
+  - Quiz performance averages
+  - Learning streak tracking
+
+- [ ] Advanced Analytics
+  - Topic mastery progress bars
+  - Difficulty progression tracking
+  - Knowledge gap visualization
+  - Performance trends
+  - Session optimization insights
+
+### Achievement System
+
+- [ ] Progress Tracking
+  - Learning milestones
+  - Daily/weekly goals
+  - Achievement badges
+  - Consistency metrics
+  - Personal records
 
 ### Personalization
 

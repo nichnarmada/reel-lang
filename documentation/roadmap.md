@@ -27,7 +27,7 @@
 
   - [x] Implement video bookmarking
   - [ ] Add basic progress tracking
-  - [ ] Create session history view
+  - [x] Create session history view
 
 ### Phase 2: Learning Features (Week 1-2)
 
@@ -38,11 +38,13 @@
   - [ ] Create quiz generation logic
   - [ ] Build quiz UI and interaction
 
-- [ ] Progress Tracking
+- [ ] Learning Statistics Overview
 
-  - [ ] Implement learning statistics
-  - [ ] Create progress visualizations
-  - [ ] Add topic mastery tracking
+  - [ ] Implement total learning time tracking
+  - [ ] Track sessions completed
+  - [ ] Monitor topics explored count
+  - [ ] Calculate and display average quiz scores
+  - [ ] Track weekly/monthly learning streaks
 
 - [ ] Analytics Integration
 
@@ -50,25 +52,45 @@
   - [ ] Track user engagement metrics
   - [ ] Monitor learning patterns
 
-### Phase 3: Personalization (Week 2)
+### Phase 3: Personalization & Advanced Stats (Week 2)
+
+- [ ] Topic Mastery Analytics
+
+  - [ ] Implement progress bars by topic
+  - [ ] Track difficulty progression
+  - [ ] Add knowledge gap indicators
+  - [ ] Create most practiced topics view
+  - [ ] Generate topic suggestions based on performance
+
+- [ ] Detailed Quiz Analytics
+
+  - [ ] Build performance trends visualization
+  - [ ] Identify strongest/weakest topics
+  - [ ] Analyze question type performance
+  - [ ] Track time spent per question
+  - [ ] Generate improvement recommendations
+
+- [ ] Session Insights
+
+  - [ ] Calculate average session durations
+  - [ ] Track preferred learning times
+  - [ ] Monitor session completion rates
+  - [ ] Analyze video engagement patterns
+  - [ ] Identify optimal session lengths
+
+- [ ] Achievement System
+
+  - [ ] Implement learning milestones
+  - [ ] Create daily/weekly goals
+  - [ ] Design achievement badges
+  - [ ] Track consistency metrics
+  - [ ] Record personal bests
 
 - [ ] Smart Recommendations
 
   - [ ] Implement topic suggestion algorithm
   - [ ] Create personalized learning paths
   - [ ] Add difficulty adaptation
-
-- [ ] Performance Insights
-
-  - [ ] Build knowledge gap analysis
-  - [ ] Create performance dashboards
-  - [ ] Implement learning recommendations
-
-- [ ] User Experience Enhancements
-
-  - [ ] Add session scheduling
-  - [ ] Implement notifications
-  - [ ] Create achievement system
 
 ### Phase 4: Social & Engagement (Future)
 

@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react"
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth"
 import {
   signInWithEmail,
@@ -7,6 +13,9 @@ import {
   signOut as firebaseSignOut,
   AuthError,
 } from "../utils/firebase/auth"
+import firestore from "@react-native-firebase/firestore"
+import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
+import { User, UserStats } from "../types/user"
 
 interface AuthContextType {
   user: FirebaseAuthTypes.User | null
@@ -21,13 +30,71 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged((user) => {
+    const unsubscribe = auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        // Check if user document exists
+        const userDoc = await firestore()
+          .collection(FIREBASE_COLLECTIONS.USERS)
+          .doc(user.uid)
+          .get()
+
+        // If user document doesn't exist, create it with default values
+        if (!userDoc.exists) {
+          const defaultStats: UserStats = {
+            totalLearningTime: 0,
+            sessionsCompleted: 0,
+            topicsProgress: {
+              explored: [],
+              recentlyActive: [],
+            },
+            quizStats: {
+              totalQuizzes: 0,
+              averageScore: 0,
+              bestScore: 0,
+              completionRate: 0,
+            },
+            learningStreaks: {
+              current: 0,
+              longest: 0,
+              lastActiveDate: new Date().toISOString(),
+              weeklyActivity: {},
+            },
+            weeklyProgress: {
+              timeSpent: Array(7).fill(0),
+              quizScores: Array(7).fill(0),
+            },
+          }
+
+          const userData: Partial<User> = {
+            uid: user.uid,
+            profile: {
+              name: user.displayName || "Learner",
+              email: user.email || "",
+              photoURL: user.photoURL || undefined,
+              createdAt: firestore.Timestamp.now(),
+              lastActive: firestore.Timestamp.now(),
+            },
+            preferences: {
+              defaultSessionLength: 5,
+              topicsOfInterest: [],
+              difficultyPreference: "beginner",
+            },
+            stats: defaultStats,
+            achievements: [],
+          }
+
+          await firestore()
+            .collection(FIREBASE_COLLECTIONS.USERS)
+            .doc(user.uid)
+            .set(userData)
+        }
+      }
       setUser(user)
       setLoading(false)
     })
@@ -80,25 +147,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const clearError = () => {
-    setError(null)
-  }
+  const clearError = () => setError(null)
 
-  const value = {
-    user,
-    loading,
-    error,
-    signIn,
-    signUp,
-    googleSignIn,
-    signOut,
-    clearError,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        error,
+        signIn,
+        signUp,
+        googleSignIn,
+        signOut,
+        clearError,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
