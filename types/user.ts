@@ -8,23 +8,36 @@ export interface UserProfile {
   lastActive: Timestamp
 }
 
+export interface GeneratedTopic {
+  name: string
+  category: string
+  description: string
+  emoji: string
+  reasonForSuggestion: string
+  confidence: number
+  searchTerms: string[]
+  relatedTopics: string[]
+  availableDifficulties: DifficultyLevel[]
+  selectedDifficulty?: DifficultyLevel
+  createdAt: Timestamp
+  lastAccessed?: Timestamp
+}
+
 export interface UserPreferences {
   defaultSessionLength: number // in minutes
-  topicsOfInterest: string[]
-  difficultyPreference: DifficultyLevel
   onboarding: OnboardingData | null // null if onboarding not completed
-  preferredCategories: string[] // High-level categories
-  skillLevels: Record<string, "beginner" | "intermediate" | "advanced">
+  preferredCategories: string[] // High-level categories for discovery
   learningGoals: string[]
+  generatedTopics: {
+    [topicId: string]: GeneratedTopic
+  }
 }
 
 export interface TopicProgress {
   topicId: string
   topicName: string
-  parentTopic?: string // For topic hierarchy
   timeSpent: number // in minutes
   lastAccessed: Timestamp
-  subTopics?: string[] // For branching knowledge structure
 }
 
 export interface UserStats {
@@ -82,12 +95,6 @@ export interface OnboardingData {
   completedAt: Timestamp
   selectedInterests: {
     categoryId: string
-    skillLevel: "beginner" | "intermediate" | "advanced"
     subInterests: string[]
   }[]
-  learningGoals: string[]
-  preferredLearningTime?: {
-    startHour: number // 0-23 format
-    endHour: number // 0-23 format
-  }
 }

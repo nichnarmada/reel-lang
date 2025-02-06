@@ -21,6 +21,7 @@ import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../../hooks/useUserPreferences"
 import { useTopicSuggestions } from "../../hooks/useTopicSuggestions"
 import { colorManager } from "../../constants/categoryColors"
+import { GeneratedTopicSuggestion } from "../../types/topicGeneration"
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
@@ -70,10 +71,28 @@ export default function DiscoverScreen() {
   }
 
   // Function to handle topic selection
-  const handleTopicSelect = (topicName: string) => {
-    // Convert topic name to id format (lowercase, hyphenated)
-    const topicId = topicName.toLowerCase().replace(/\s+/g, "-")
-    router.push(`/topic/${topicId}`)
+  const handleTopicSelect = (topic: GeneratedTopicSuggestion) => {
+    // Generate a consistent ID for the topic
+    const topicId = `${topic.category}-${topic.name
+      .toLowerCase()
+      .replace(/\s+/g, "-")}`
+
+    // Navigate with all topic data
+    router.push({
+      pathname: "/topic/[id]" as const,
+      params: {
+        id: topicId,
+        isGenerated: "true",
+        category: topic.category,
+        name: topic.name,
+        description: topic.description,
+        emoji: topic.emoji,
+        reasonForSuggestion: topic.reasonForSuggestion,
+        confidence: topic.confidence.toString(),
+        searchTerms: topic.searchTerms,
+        relatedTopics: topic.relatedTopics,
+      },
+    })
   }
 
   const handleSearch = async () => {
@@ -193,7 +212,7 @@ export default function DiscoverScreen() {
                       styles.topicBadge,
                       { backgroundColor: colors.background },
                     ]}
-                    onPress={() => handleTopicSelect(topic.name)}
+                    onPress={() => handleTopicSelect(topic)}
                     accessibilityLabel={`Learn about ${topic.name}`}
                   >
                     {topic.emoji && (

@@ -27,21 +27,35 @@ import { useAuth } from "../../contexts/auth"
 import {
   getCollection,
   FIREBASE_COLLECTIONS,
+  firestore,
 } from "../../utils/firebase/config"
-import { Timestamp } from "@react-native-firebase/firestore"
+import { Timestamp, doc, updateDoc } from "@react-native-firebase/firestore"
+import { GeneratedTopicSuggestion } from "../../types/topicGeneration"
+import { GeneratedTopic } from "../../types/user"
+import { DifficultyLevel } from "../../types"
+import { SessionDuration } from "@/types/session"
 
 const WINDOW_WIDTH = Dimensions.get("window").width
 
-type SessionDuration = 1 | 5 | 10 | 15
+interface TopicDetailsParams {
+  id: string
+  isGenerated?: string
+  category?: string
+  name?: string
+}
+
+type DisplayTopic = Topic | (GeneratedTopicSuggestion & { id: string })
 
 export default function TopicDetailsScreen() {
-  const { id } = useLocalSearchParams()
+  const params = useLocalSearchParams()
   const { user } = useAuth()
   const { topics } = useTopics()
-  const [topic, setTopic] = useState<Topic | null>(null)
+  const [topic, setTopic] = useState<DisplayTopic | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showDurationModal, setShowDurationModal] = useState(false)
+
+  const isGenerated = params.isGenerated === "true"
 
   // Sample subtopics (we'll make this dynamic later)
   const subtopics = [
@@ -80,11 +94,78 @@ export default function TopicDetailsScreen() {
   useEffect(() => {
     const loadTopic = async () => {
       try {
-        const foundTopic = topics.find((t) => t.id === id)
-        if (!foundTopic) {
-          throw new Error("Topic not found")
+        if (isGenerated) {
+          // For generated topics, create topic object from navigation params
+          const name = String(params.name)
+          const category = String(params.category)
+          const id = String(params.id)
+
+          if (!name || !category) {
+            throw new Error("Missing topic information")
+          }
+
+          // Create a topic object directly from navigation params
+          const generatedTopic: GeneratedTopicSuggestion & { id: string } = {
+            id,
+            name,
+            category,
+            categoryPath: [category],
+            description: String(params.description || "Loading description..."),
+            availableDifficulties: ["beginner", "intermediate", "advanced"],
+            confidence: Number(params.confidence || 1),
+            reasonForSuggestion: String(
+              params.reasonForSuggestion || "AI-generated topic"
+            ),
+            suggestedAt: Timestamp.now(),
+            searchTerms: Array.isArray(params.searchTerms)
+              ? params.searchTerms
+              : [],
+            relatedTopics: Array.isArray(params.relatedTopics)
+              ? params.relatedTopics
+              : [],
+            popularity: 0,
+            emoji: String(params.emoji || "🎯"),
+          }
+
+          setTopic(generatedTopic)
+
+          // Save or update the topic in user's preferences
+          if (user) {
+            const userRef = doc(firestore, FIREBASE_COLLECTIONS.USERS, user.uid)
+            const topicData: GeneratedTopic = {
+              name: name,
+              category: category,
+              description: String(
+                params.description || "Loading description..."
+              ),
+              emoji: String(params.emoji || "🎯"),
+              reasonForSuggestion: String(
+                params.reasonForSuggestion || "AI-generated topic"
+              ),
+              confidence: Number(params.confidence || 1),
+              searchTerms: Array.isArray(params.searchTerms)
+                ? params.searchTerms
+                : [],
+              relatedTopics: Array.isArray(params.relatedTopics)
+                ? params.relatedTopics
+                : [],
+              availableDifficulties: ["beginner", "intermediate", "advanced"],
+              createdAt: Timestamp.now(),
+              lastAccessed: Timestamp.now(),
+            }
+
+            await updateDoc(userRef, {
+              [`preferences.generatedTopics.${id}`]: topicData,
+            })
+          }
+        } else {
+          // Handle fixed topics (existing logic)
+          const foundTopic = topics.find((t) => t.id === String(params.id))
+          if (!foundTopic) {
+            throw new Error("Topic not found")
+          }
+          setTopic(foundTopic)
         }
-        setTopic(foundTopic)
       } catch (err) {
         console.error("Error loading topic:", err)
         setError(err instanceof Error ? err.message : "Failed to load topic")
@@ -94,7 +175,19 @@ export default function TopicDetailsScreen() {
     }
 
     loadTopic()
-  }, [id, topics])
+  }, [
+    params.id,
+    params.name,
+    params.category,
+    params.description,
+    params.emoji,
+    params.reasonForSuggestion,
+    params.searchTerms,
+    params.relatedTopics,
+    topics,
+    isGenerated,
+    user,
+  ])
 
   const handleStartLearning = async (duration: SessionDuration) => {
     if (!topic || !user) return
@@ -111,6 +204,7 @@ export default function TopicDetailsScreen() {
         status: "active",
         startTime: Timestamp.now(),
         duration: duration,
+        isGeneratedTopic: isGenerated,
       })
 
       // Navigate to reels with session ID
@@ -138,6 +232,23 @@ export default function TopicDetailsScreen() {
           duration: duration.toString(),
         },
       })
+    }
+  }
+
+  const handleDifficultySelect = async (difficulty: DifficultyLevel) => {
+    if (!topic || !user || !isGenerated) return
+
+    try {
+      const userRef = doc(firestore, FIREBASE_COLLECTIONS.USERS, user.uid)
+      await updateDoc(userRef, {
+        [`preferences.generatedTopics.${topic.id}.selectedDifficulty`]:
+          difficulty,
+        [`preferences.generatedTopics.${topic.id}.lastAccessed`]:
+          Timestamp.now(),
+      })
+    } catch (err) {
+      console.error("Error updating difficulty:", err)
+      // Show error to user
     }
   }
 
@@ -174,18 +285,28 @@ export default function TopicDetailsScreen() {
       <ScrollView style={styles.container} stickyHeaderIndices={[0]}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <ChevronLeft size={24} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{topic.name}</Text>
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <ChevronLeft size={24} color="#000" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              {"emoji" in topic && topic.emoji && (
+                <Text style={styles.headerEmoji}>{topic.emoji}</Text>
+              )}
+              <Text style={styles.headerTitle}>{topic.name}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Overview Section */}
         <View style={styles.section}>
           <Text style={styles.description}>{topic.description}</Text>
+          {"reasonForSuggestion" in topic && (
+            <Text style={styles.aiInsight}>{topic.reasonForSuggestion}</Text>
+          )}
           <View style={styles.stats}>
             <View style={styles.stat}>
               <Users size={16} color="#666" />
@@ -325,22 +446,34 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
     padding: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
     paddingTop: Platform.OS === "ios" ? 60 : 16,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   backButton: {
     padding: 8,
+    marginRight: 8,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerEmoji: {
+    fontSize: 24,
+    marginRight: 8,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "600",
-    marginLeft: 8,
     color: "#000",
+    flex: 1,
   },
   section: {
     padding: 16,
@@ -532,5 +665,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  aiGeneratedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#8a2be215",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  aiGeneratedText: {
+    fontSize: 12,
+    color: "#8a2be2",
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  aiInsight: {
+    fontSize: 14,
+    color: "#666",
+    fontStyle: "italic",
+    marginTop: 8,
+    marginBottom: 16,
   },
 })

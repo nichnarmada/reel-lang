@@ -2,6 +2,8 @@ import { Timestamp } from "."
 
 export type SessionStatus = "active" | "completed" | "paused"
 
+export type SessionDuration = 1 | 5 | 10 | 15
+
 export interface Session {
   id: string
   userId: string
