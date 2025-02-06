@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ export default function OnboardingScreen() {
   )
 
   // Redirect if already completed onboarding
-  React.useEffect(() => {
+  useEffect(() => {
     if (hasCompletedOnboarding) {
       router.replace("/")
     }
@@ -45,7 +45,7 @@ export default function OnboardingScreen() {
       await setOnboardingComplete()
       router.replace("/")
     } catch (err) {
-      console.error("Error saving preferences:", err)
+      console.error("[Onboarding] Error saving preferences:", err)
     }
   }
 

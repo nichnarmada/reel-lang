@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import firestore from "@react-native-firebase/firestore"
 import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 import { UserPreferences } from "../types/user"
@@ -6,32 +6,64 @@ import { UserPreferences } from "../types/user"
 export const useUserPreferences = (userId: string) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null)
+
+  const fetchPreferences = useCallback(async () => {
+    if (!userId) return null
+
+    setLoading(true)
+    setError(null)
+    try {
+      const userDoc = await firestore()
+        .collection(FIREBASE_COLLECTIONS.USERS)
+        .doc(userId)
+        .get()
+
+      if (!userDoc.exists) {
+        throw new Error("User document not found")
+      }
+
+      const userData = userDoc.data()
+      setPreferences(userData?.preferences || null)
+      return userData?.preferences || null
+    } catch (err) {
+      console.error("Error fetching preferences:", err)
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch preferences"
+      )
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  // Fetch preferences on mount and when userId changes
+  useEffect(() => {
+    fetchPreferences()
+  }, [userId, fetchPreferences])
 
   const savePreferences = useCallback(
     async (preferences: Partial<UserPreferences>) => {
       setLoading(true)
       setError(null)
       try {
-        const userPrefsRef = firestore()
+        const userRef = firestore()
           .collection(FIREBASE_COLLECTIONS.USERS)
           .doc(userId)
-          .collection("preferences")
-          .doc("default")
 
-        // Get existing preferences first
-        const existingPrefs = await userPrefsRef.get()
-        const currentPrefs = existingPrefs.exists
-          ? (existingPrefs.data() as UserPreferences)
-          : {}
+        // Get existing user data first
+        const userDoc = await userRef.get()
+        if (!userDoc.exists) {
+          throw new Error("User document not found")
+        }
 
-        // Merge with new preferences
-        await userPrefsRef.set(
-          {
-            ...currentPrefs,
+        // Update preferences field directly
+        await userRef.update({
+          preferences: {
+            ...userDoc.data()?.preferences,
             ...preferences,
           },
-          { merge: true }
-        )
+        })
       } catch (err) {
         console.error("Error saving preferences:", err)
         setError(
@@ -49,7 +81,6 @@ export const useUserPreferences = (userId: string) => {
     async (selectedCategories: string[]) => {
       try {
         await savePreferences({
-          topicsOfInterest: selectedCategories,
           preferredCategories: selectedCategories,
           onboarding: {
             completedAt: firestore.Timestamp.now(),
@@ -72,7 +103,9 @@ export const useUserPreferences = (userId: string) => {
   return {
     loading,
     error,
+    preferences,
     savePreferences,
     saveOnboardingSelections,
+    fetchPreferences,
   }
 }

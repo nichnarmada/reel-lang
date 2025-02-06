@@ -48,20 +48,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .doc(user.uid)
         .get()
 
-      if (!userDoc.exists) return false
+      if (!userDoc.exists) {
+        return false
+      }
 
       const userData = userDoc.data() as User
       const completed = !!userData.preferences?.onboarding?.completedAt
+
       setHasCompletedOnboarding(completed)
       return completed
     } catch (err) {
-      console.error("Error checking onboarding status:", err)
+      console.error("[Auth] Error checking onboarding status:", err)
       return false
     }
   }
 
   const setOnboardingComplete = async () => {
-    setHasCompletedOnboarding(true)
+    if (!user) return
+
+    try {
+      // Update Firestore
+      await firestore()
+        .collection(FIREBASE_COLLECTIONS.USERS)
+        .doc(user.uid)
+        .update({
+          "preferences.onboarding": {
+            completedAt: firestore.Timestamp.now(),
+          },
+        })
+
+      // Update local state
+      setHasCompletedOnboarding(true)
+    } catch (err) {
+      console.error("[Auth] Error setting onboarding complete:", err)
+      throw err
+    }
   }
 
   useEffect(() => {
