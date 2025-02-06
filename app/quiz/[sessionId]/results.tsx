@@ -125,7 +125,7 @@ export default function QuizResultsScreen() {
           {/* Continue Learning Button */}
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => router.replace("/progress")}
+            onPress={() => router.replace("/stats")}
           >
             <Play size={20} color="#fff" />
             <Text style={styles.continueButtonText}>View Quiz History</Text>

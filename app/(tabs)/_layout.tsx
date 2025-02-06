@@ -2,9 +2,8 @@ import { Tabs } from "expo-router"
 import {
   Film,
   UserRoundPen,
-  Brain,
-  LineChart,
   Telescope,
+  ChartNoAxesCombined,
 } from "lucide-react-native"
 import { LAYOUT } from "../../constants/layout"
 
@@ -31,6 +30,15 @@ export default function TabLayout() {
         options={{
           title: "Learn",
           tabBarIcon: ({ color }) => <Film size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: "Stats",
+          tabBarIcon: ({ color }) => (
+            <ChartNoAxesCombined size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
