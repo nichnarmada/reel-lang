@@ -26,7 +26,16 @@ Please generate topic suggestions in the following JSON format:
     "name": "Topic Name",
     "emoji": "🔍",  // Single most relevant emoji
     "description": "Brief description of the topic",
-    "relatedTopics": ["Related Topic 1", "Related Topic 2"],
+    "relatedTopics": [
+      {
+        "name": "Related Topic 1",
+        "emoji": "📚"  // Relevant emoji for each related topic
+      },
+      {
+        "name": "Related Topic 2",
+        "emoji": "🎯"
+      }
+    ],
     "searchTerms": ["term1", "term2", "term3"],
     "confidence": 0.9,
     "reasonForSuggestion": "Why this topic is suggested"
@@ -38,12 +47,13 @@ Requirements:
 2. Topic names should be clear and concise (e.g., "Photography Composition" not "Basic Photography Composition (Beginner)")
 3. Topic names should not include difficulty levels or skill indicators
 4. Include one relevant emoji that best represents the topic
-5. Ensure all JSON fields are present
-6. Confidence should be a number between 0 and 1
-7. Keep descriptions concise (max 100 characters)
-8. Include 2-4 related topics
-9. Include 3-5 search terms
-10. Format as a valid JSON array
+5. Each related topic must have its own relevant emoji
+6. Include 2-4 related topics per main topic
+7. Ensure all JSON fields are present
+8. Confidence should be a number between 0 and 1
+9. Keep descriptions concise (max 100 characters)
+10. Include 3-5 search terms
+11. Format as a valid JSON array
 
 Examples of good topic and emoji combinations:
 - "Camera Modes" 📸
@@ -92,7 +102,12 @@ const processAIResponse = async (
       reasonForSuggestion: item.reasonForSuggestion,
       confidence: item.confidence,
       searchTerms: item.searchTerms || [],
-      relatedTopics: item.relatedTopics || [],
+      relatedTopics: Array.isArray(item.relatedTopics)
+        ? item.relatedTopics.map((topic: any) => ({
+            name: typeof topic === "string" ? topic : topic.name,
+            emoji: typeof topic === "string" ? "📚" : topic.emoji || "📚",
+          }))
+        : [],
       availableDifficulties: ["beginner", "intermediate", "advanced"],
       createdAt: Timestamp.now(),
       lastAccessed: Timestamp.now(),

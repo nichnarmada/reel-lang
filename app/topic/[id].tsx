@@ -22,6 +22,7 @@ import {
   Users,
   BookOpen,
   X,
+  Sparkles,
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
 import {
@@ -37,7 +38,8 @@ import {
 } from "@react-native-firebase/firestore"
 import { DifficultyLevel } from "../../types"
 import { SessionDuration } from "@/types/session"
-
+import { capitalizeText } from "../../utils/utils"
+import { colorManager } from "../../constants/categoryColors"
 const WINDOW_WIDTH = Dimensions.get("window").width
 
 interface TopicDetailsParams {
@@ -68,31 +70,6 @@ export default function TopicDetailsScreen() {
     "Modern Developments",
   ]
 
-  // Sample video previews (we'll fetch these from Firestore later)
-  const videoPreviews = [
-    {
-      id: "1",
-      title: "Introduction to the Basics",
-      duration: "3:45",
-      difficulty: "beginner",
-      thumbnail: "https://picsum.photos/300/200",
-    },
-    {
-      id: "2",
-      title: "Intermediate Concepts",
-      duration: "4:20",
-      difficulty: "intermediate",
-      thumbnail: "https://picsum.photos/300/200",
-    },
-    {
-      id: "3",
-      title: "Advanced Applications",
-      duration: "5:15",
-      difficulty: "advanced",
-      thumbnail: "https://picsum.photos/300/200",
-    },
-  ]
-
   useEffect(() => {
     const loadTopic = async () => {
       try {
@@ -120,8 +97,8 @@ export default function TopicDetailsScreen() {
             searchTerms: Array.isArray(params.searchTerms)
               ? params.searchTerms
               : [],
-            relatedTopics: Array.isArray(params.relatedTopics)
-              ? params.relatedTopics
+            relatedTopics: params.relatedTopics
+              ? JSON.parse(String(params.relatedTopics))
               : [],
             availableDifficulties: ["beginner", "intermediate", "advanced"],
             createdAt: Timestamp.now(),
@@ -271,111 +248,113 @@ export default function TopicDetailsScreen() {
           headerShown: false,
         }}
       />
-      <ScrollView style={styles.container} stickyHeaderIndices={[0]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <ChevronLeft size={24} color="#000" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              {"emoji" in topic && topic.emoji && (
-                <Text style={styles.headerEmoji}>{topic.emoji}</Text>
-              )}
-              <Text style={styles.headerTitle}>{topic.name}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Overview Section */}
-        <View style={styles.section}>
-          <Text style={styles.description}>{topic.description}</Text>
-          {"reasonForSuggestion" in topic && (
-            <Text style={styles.aiInsight}>{topic.reasonForSuggestion}</Text>
-          )}
-          <View style={styles.stats}>
-            <View style={styles.stat}>
-              <Users size={16} color="#666" />
-              <Text style={styles.statText}>1.2k learners</Text>
-            </View>
-            <View style={styles.stat}>
-              <Clock size={16} color="#666" />
-              <Text style={styles.statText}>~10 mins/session</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Difficulty Levels */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Available Difficulty Levels</Text>
-          <View style={styles.difficultyContainer}>
-            {topic.availableDifficulties.map((difficulty) => (
-              <View
-                key={difficulty}
-                style={[styles.difficultyBadge, styles.activeDifficulty]}
+      <View style={styles.container}>
+        <ScrollView style={styles.scrollContainer} stickyHeaderIndices={[0]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backButton}
               >
-                <Text style={styles.difficultyText}>
-                  {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                <ChevronLeft size={24} color="#000" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                {"emoji" in topic && topic.emoji && (
+                  <Text style={styles.headerEmoji}>{topic.emoji}</Text>
+                )}
+                <Text style={styles.headerTitle}>{topic.name}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Overview Section */}
+          <View style={styles.section}>
+            {/* Category Badge */}
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>
+                {capitalizeText(topic.category)}
+              </Text>
+            </View>
+
+            {/* Description */}
+            <Text style={styles.description}>{topic.description}</Text>
+
+            {/* AI Insight Card */}
+            <View style={styles.aiInsightCard}>
+              <View style={styles.aiInsightHeader}>
+                <Sparkles size={20} color="#8a2be2" />
+                <Text style={styles.aiInsightTitle}>
+                  Why This Topic is Great for You
                 </Text>
               </View>
-            ))}
-          </View>
-        </View>
+              <Text style={styles.aiReason}>{topic.reasonForSuggestion}</Text>
+            </View>
 
-        {/* Video Previews */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preview Videos</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.videoPreviewsContainer}
-          >
-            {videoPreviews.map((video) => (
-              <View key={video.id} style={styles.videoPreview}>
-                <Image
-                  source={{ uri: video.thumbnail }}
-                  style={styles.videoThumbnail}
-                />
-                <View style={styles.videoInfo}>
-                  <Text style={styles.videoTitle} numberOfLines={2}>
-                    {video.title}
-                  </Text>
-                  <View style={styles.videoMeta}>
-                    <Text style={styles.videoDuration}>{video.duration}</Text>
-                    <Text style={styles.videoDifficulty}>
-                      {video.difficulty}
+            {/* Difficulty Selection */}
+            {/* <View style={styles.difficultySection}>
+              <Text style={styles.sectionSubtitle}>Select Difficulty</Text>
+              <View style={styles.difficultyContainer}>
+                {topic.availableDifficulties.map((difficulty) => (
+                  <TouchableOpacity
+                    key={difficulty}
+                    style={[
+                      styles.difficultyBadge,
+                      topic.selectedDifficulty === difficulty &&
+                        styles.selectedDifficulty,
+                    ]}
+                    onPress={() => handleDifficultySelect(difficulty)}
+                  >
+                    <Text
+                      style={[
+                        styles.difficultyText,
+                        topic.selectedDifficulty === difficulty &&
+                          styles.selectedDifficultyText,
+                      ]}
+                    >
+                      {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
                     </Text>
-                  </View>
-                </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Deep Dive Topics */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Explore Deeper</Text>
-          <View style={styles.subtopicsContainer}>
-            {subtopics.map((subtopic) => (
-              <TouchableOpacity
-                key={subtopic}
-                style={styles.subtopicButton}
-                onPress={() => {
-                  // TODO: Filter videos by subtopic
-                }}
-              >
-                <BookOpen size={16} color="#666" />
-                <Text style={styles.subtopicText}>{subtopic}</Text>
-              </TouchableOpacity>
-            ))}
+            </View> */}
           </View>
-        </View>
 
-        {/* Start Learning Button */}
-        <View style={styles.startLearningContainer}>
+          {/* Deep Dive Topics */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Related Topics</Text>
+            <View style={styles.relatedTopicsContainer}>
+              {topic.relatedTopics.map((relatedTopic) => {
+                const colors = colorManager.getNextColor()
+                return (
+                  <TouchableOpacity
+                    key={relatedTopic.name}
+                    style={[
+                      styles.relatedTopicButton,
+                      { backgroundColor: colors.background },
+                    ]}
+                    onPress={() => {
+                      // TODO: Navigate to related topic
+                      console.log("Navigate to:", relatedTopic)
+                    }}
+                  >
+                    <Text style={styles.relatedTopicEmoji}>
+                      {relatedTopic.emoji}
+                    </Text>
+                    <Text
+                      style={[styles.relatedTopicText, { color: colors.text }]}
+                    >
+                      {capitalizeText(relatedTopic.name)}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Floating Start Learning Button */}
+        <View style={styles.floatingButtonContainer}>
           <TouchableOpacity
             style={styles.startLearningButton}
             onPress={() => setShowDurationModal(true)}
@@ -384,7 +363,7 @@ export default function TopicDetailsScreen() {
             <Text style={styles.startLearningText}>Start Learning</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
 
       {/* Duration Selection Modal */}
       <Modal
@@ -434,6 +413,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingBottom: 80, // Add padding to account for floating button
+  },
+  contentContainer: {
+    paddingBottom: 24,
+  },
+  floatingButtonContainer: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 34 : 24,
+    left: 16,
+    right: 16,
+    backgroundColor: "#fff",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   header: {
     padding: 16,
     backgroundColor: "#fff",
@@ -466,51 +471,89 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    backgroundColor: "#fff",
+  },
+  categoryBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#8a2be215",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  categoryText: {
+    color: "#8a2be2",
+    fontSize: 14,
+    fontWeight: "500",
   },
   description: {
     fontSize: 16,
     color: "#333",
     lineHeight: 24,
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  stats: {
-    flexDirection: "row",
-    gap: 16,
+  aiInsightCard: {
+    backgroundColor: "#8a2be215",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#8a2be230",
   },
-  stat: {
+  aiInsightHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    marginBottom: 12,
+    gap: 8,
   },
-  statText: {
-    color: "#666",
-    fontSize: 14,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  aiInsightTitle: {
+    fontSize: 16,
     fontWeight: "600",
-    marginBottom: 16,
-    color: "#000",
+    color: "#8a2be2",
+  },
+  aiReason: {
+    fontSize: 15,
+    color: "#4a4a4a",
+    lineHeight: 22,
+  },
+  difficultySection: {
+    marginTop: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 12,
   },
   difficultyContainer: {
     flexDirection: "row",
     gap: 8,
   },
   difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "transparent",
   },
-  activeDifficulty: {
+  selectedDifficulty: {
     backgroundColor: "#8a2be215",
+    borderColor: "#8a2be2",
   },
   difficultyText: {
-    color: "#8a2be2",
     fontSize: 14,
+    color: "#666",
+  },
+  selectedDifficultyText: {
+    color: "#8a2be2",
     fontWeight: "500",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 16,
+    color: "#000",
   },
   videoPreviewsContainer: {
     gap: 12,
@@ -569,11 +612,6 @@ const styles = StyleSheet.create({
   subtopicText: {
     fontSize: 14,
     color: "#333",
-  },
-  startLearningContainer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
   },
   startLearningButton: {
     flexDirection: "row",
@@ -677,5 +715,59 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 8,
     marginBottom: 16,
+  },
+  contentCard: {
+    width: 200,
+    marginRight: 12,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  contentImage: {
+    width: "100%",
+    height: 120,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  contentPlaceholder: {
+    width: "100%",
+    height: 120,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    backgroundColor: "#f8f9fa",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  contentTitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    margin: 12,
+    color: "#1a1a1a",
+  },
+  relatedTopicsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  relatedTopicButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+  },
+  relatedTopicEmoji: {
+    fontSize: 16,
+  },
+  relatedTopicText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 })

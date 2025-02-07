@@ -1,6 +1,11 @@
 import { DifficultyLevel } from "."
 import { Timestamp } from "firebase/firestore"
 
+export interface RelatedTopic {
+  name: string
+  emoji: string
+}
+
 export interface GeneratedTopic {
   name: string
   category: string
@@ -9,7 +14,7 @@ export interface GeneratedTopic {
   reasonForSuggestion: string
   confidence: number
   searchTerms: string[]
-  relatedTopics: string[]
+  relatedTopics: RelatedTopic[]
   availableDifficulties: DifficultyLevel[]
   selectedDifficulty?: DifficultyLevel
   createdAt: Timestamp
