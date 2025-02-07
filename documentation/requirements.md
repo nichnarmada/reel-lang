@@ -116,3 +116,24 @@
 - [x] Topic connections
 - [x] Performance insights
 - [x] Adaptive difficulty
+
+### Learning Context (Future)
+
+- [ ] "Why Learn This?" topic relevance explanations
+- [ ] Real-world applications and use cases
+- [ ] Career opportunities related to topics
+- [ ] Industry trends and relevance indicators
+
+### Personalized Learning Insights
+
+- [ ] AI-generated learning recommendations
+- [ ] Personalized learning pace suggestions
+- [ ] Interest compatibility analysis
+- [ ] Learning style recommendations
+
+### Smart Session Planning
+
+- [ ] AI-optimized session length recommendations
+- [ ] Best learning time suggestions
+- [ ] Spaced repetition scheduling
+- [ ] Session structure optimization
