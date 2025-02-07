@@ -16,13 +16,21 @@ import {
 } from "@react-native-firebase/firestore"
 import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 
+interface TopicWithStats extends UserGeneratedTopic {
+  stats: {
+    totalSessions: number
+    totalTimeSpent: number // in minutes
+    lastSessionDate: Timestamp
+  }
+}
+
 interface UseUserTopicsResult {
-  topics: Record<string, UserGeneratedTopic>
+  topics: Record<string, TopicWithStats>
   loading: boolean
   error: string | null
   categories: string[]
-  recentTopics: [string, UserGeneratedTopic][]
-  filteredTopics: [string, UserGeneratedTopic][]
+  recentTopics: [string, TopicWithStats][]
+  filteredTopics: [string, TopicWithStats][]
   filterTopics: (query: string, category: string | null) => void
   removeTopic: (topicId: string) => Promise<void>
   updateTopicDifficulty: (topicId: string, difficulty: string) => Promise<void>
@@ -30,13 +38,13 @@ interface UseUserTopicsResult {
 
 export const useUserTopics = (): UseUserTopicsResult => {
   const { user } = useAuth()
-  const [topics, setTopics] = useState<Record<string, UserGeneratedTopic>>({})
+  const [topics, setTopics] = useState<Record<string, TopicWithStats>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
-  // Load topics from subcollection
+  // Load topics that have associated sessions
   useEffect(() => {
     const loadTopics = async () => {
       if (!user) {
@@ -45,23 +53,80 @@ export const useUserTopics = (): UseUserTopicsResult => {
       }
 
       try {
-        const topicsRef = collection(
-          firestore,
-          FIREBASE_COLLECTIONS.USERS,
-          user.uid,
-          "generatedTopics"
+        // First, get all sessions to find topics the user has studied
+        const sessionsRef = collection(firestore, FIREBASE_COLLECTIONS.SESSIONS)
+        const sessionsQuery = query(
+          sessionsRef,
+          where("userId", "==", user.uid)
         )
-        const topicsQuery = query(topicsRef, orderBy("lastAccessed", "desc"))
-        const snapshot = await getDocs(topicsQuery)
+        const sessionsSnapshot = await getDocs(sessionsQuery)
 
-        const loadedTopics: Record<string, UserGeneratedTopic> = {}
-        snapshot.forEach((doc) => {
-          loadedTopics[doc.id] = {
-            id: doc.id,
-            userId: user.uid,
-            ...doc.data(),
-          } as UserGeneratedTopic
+        // Create a map of topic stats from sessions
+        const topicStats: Record<
+          string,
+          {
+            totalSessions: number
+            totalTimeSpent: number
+            lastSessionDate: Timestamp
+          }
+        > = {}
+
+        sessionsSnapshot.forEach((sessionDoc) => {
+          const session = sessionDoc.data()
+          const topicId = session.topicId
+
+          if (!topicStats[topicId]) {
+            topicStats[topicId] = {
+              totalSessions: 0,
+              totalTimeSpent: 0,
+              lastSessionDate: session.startTime,
+            }
+          }
+
+          topicStats[topicId].totalSessions++
+          topicStats[topicId].totalTimeSpent += session.duration
+          if (
+            session.startTime.toMillis() >
+            topicStats[topicId].lastSessionDate.toMillis()
+          ) {
+            topicStats[topicId].lastSessionDate = session.startTime
+          }
         })
+
+        // Only fetch topics that have associated sessions
+        const topicIds = Object.keys(topicStats)
+        const loadedTopics: Record<string, TopicWithStats> = {}
+
+        if (topicIds.length > 0) {
+          const topicsRef = collection(
+            firestore,
+            FIREBASE_COLLECTIONS.USERS,
+            user.uid,
+            "generatedTopics"
+          )
+
+          // Fetch topics in batches of 10 (Firestore limitation for 'in' queries)
+          const batchSize = 10
+          for (let i = 0; i < topicIds.length; i += batchSize) {
+            const batch = topicIds.slice(i, i + batchSize)
+            const topicsQuery = query(
+              topicsRef,
+              where("id", "in", batch),
+              orderBy("lastAccessed", "desc")
+            )
+            const snapshot = await getDocs(topicsQuery)
+
+            snapshot.forEach((doc) => {
+              const topicData = doc.data() as UserGeneratedTopic
+              loadedTopics[doc.id] = {
+                ...topicData,
+                id: doc.id,
+                userId: user.uid,
+                stats: topicStats[doc.id],
+              }
+            })
+          }
+        }
 
         setTopics(loadedTopics)
       } catch (err) {
@@ -144,7 +209,7 @@ export const useUserTopics = (): UseUserTopicsResult => {
       await updateDoc(topicRef, updates)
 
       // Update local state
-      const updatedTopic: UserGeneratedTopic = {
+      const updatedTopic: TopicWithStats = {
         ...topics[topicId],
         selectedDifficulty: difficulty as GeneratedTopic["selectedDifficulty"],
         lastAccessed: updates.lastAccessed,

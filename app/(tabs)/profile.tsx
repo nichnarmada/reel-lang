@@ -7,18 +7,17 @@ import {
   TouchableOpacity,
   Switch,
   Image,
-  Platform,
 } from "react-native"
 import { useAuth } from "../../contexts/auth"
 import {
   Settings,
   Bell,
-  BookOpen,
   Share2,
   HelpCircle,
-  LogOut,
   ChevronRight,
   Bookmark,
+  Brain,
+  Film,
 } from "lucide-react-native"
 import { HEADER_PADDING } from "../../constants/layout"
 import { useRouter } from "expo-router"
@@ -55,14 +54,14 @@ export default function ProfileScreen() {
 
       {/* Learning Preferences */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Learning Preferences</Text>
+        <Text style={styles.sectionTitle}>Content Settings</Text>
         <TouchableOpacity
           style={styles.settingItem}
           onPress={() => router.push("/(profile)/topics-of-interest")}
         >
           <View style={styles.settingLeft}>
-            <BookOpen size={24} color="#666" />
-            <Text style={styles.settingText}>Topics of Interest</Text>
+            <Brain size={24} color="#666" />
+            <Text style={styles.settingText}>Manage Topics</Text>
           </View>
           <ChevronRight size={20} color="#666" />
         </TouchableOpacity>
@@ -95,7 +94,7 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Settings size={24} color="#666" />
+            <Film size={24} color="#666" />
             <Text style={styles.settingText}>Autoplay Videos</Text>
           </View>
           <Switch

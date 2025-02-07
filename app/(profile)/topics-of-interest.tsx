@@ -10,46 +10,44 @@ import {
   Alert,
 } from "react-native"
 import { Stack, router } from "expo-router"
-import {
-  ChevronLeft,
-  Search,
-  Clock,
-  MoreVertical,
-  Filter,
-} from "lucide-react-native"
+import { ChevronLeft, Search, X, Tag, Settings2 } from "lucide-react-native"
 import { UserGeneratedTopic } from "../../types/user"
-import { formatDistanceToNow } from "date-fns"
 import { useUserTopics } from "../../hooks/useUserTopics"
+import { LoadingSpinner } from "../../components/LoadingSpinner"
+import { ErrorMessage } from "../../components/ErrorMessage"
 
 interface TopicItemProps {
   topic: UserGeneratedTopic
-  onPress: () => void
-  onDelete: () => Promise<void>
+  onRemove: () => Promise<void>
 }
 
-const TopicItem = ({ topic, onPress, onDelete }: TopicItemProps) => {
-  const handleMorePress = () => {
-    Alert.alert("Topic Options", "What would you like to do with this topic?", [
-      {
-        text: "Remove Topic",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await onDelete()
-          } catch (err) {
-            Alert.alert("Error", "Failed to remove topic. Please try again.")
-          }
+const TopicItem = ({ topic, onRemove }: TopicItemProps) => {
+  const handleRemove = () => {
+    Alert.alert(
+      "Remove Topic",
+      "Are you sure you want to remove this topic? Your learning history will be preserved but the topic won't appear in your lists anymore.",
+      [
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await onRemove()
+            } catch (err) {
+              Alert.alert("Error", "Failed to remove topic. Please try again.")
+            }
+          },
         },
-      },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-    ])
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    )
   }
 
   return (
-    <TouchableOpacity style={styles.topicItem} onPress={onPress}>
+    <View style={styles.topicItem}>
       <View style={styles.topicMain}>
         <View style={styles.topicHeader}>
           <View style={styles.topicInfo}>
@@ -58,81 +56,57 @@ const TopicItem = ({ topic, onPress, onDelete }: TopicItemProps) => {
             )}
             <Text style={styles.topicName}>{topic.name}</Text>
           </View>
-          <TouchableOpacity style={styles.moreButton} onPress={handleMorePress}>
-            <MoreVertical size={20} color="#666" />
+          <TouchableOpacity style={styles.removeButton} onPress={handleRemove}>
+            <X size={20} color="#666" />
           </TouchableOpacity>
         </View>
+
         <View style={styles.topicMeta}>
           <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{topic.category}</Text>
+            <Tag size={14} color="#666" />
+            <Text style={styles.categoryText}>
+              {topic.category.charAt(0).toUpperCase() + topic.category.slice(1)}
+            </Text>
           </View>
-          {topic.lastAccessed && (
-            <View style={styles.lastAccessed}>
-              <Clock size={12} color="#666" />
-              <Text style={styles.lastAccessedText}>
-                {formatDistanceToNow(new Date(topic.lastAccessed.toMillis()), {
-                  addSuffix: true,
-                })}
+          {topic.selectedDifficulty && (
+            <View style={styles.difficultyBadge}>
+              <Settings2 size={14} color="#8a2be2" />
+              <Text style={styles.difficultyText}>
+                {topic.selectedDifficulty}
               </Text>
             </View>
           )}
         </View>
-        {topic.selectedDifficulty && (
-          <View style={styles.difficultyBadge}>
-            <Text style={styles.difficultyText}>
-              {topic.selectedDifficulty}
-            </Text>
-          </View>
-        )}
       </View>
-    </TouchableOpacity>
+    </View>
   )
 }
 
-export default function TopicsOfInterestScreen() {
+export default function TopicsSettingsScreen() {
+  const { topics, loading, error, categories, removeTopic } = useUserTopics()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const {
-    topics,
-    loading,
-    error,
-    categories,
-    recentTopics,
-    filteredTopics,
-    filterTopics,
-    removeTopic,
-  } = useUserTopics()
 
-  const handleTopicPress = (topic: UserGeneratedTopic) => {
-    router.push({
-      pathname: "/topic/[id]" as const,
-      params: {
-        id: topic.id,
-        isGenerated: "true",
-        category: topic.category,
-        name: topic.name,
-        description: topic.description,
-        emoji: topic.emoji,
-        reasonForSuggestion: topic.reasonForSuggestion,
-        confidence: topic.confidence.toString(),
-        searchTerms: topic.searchTerms,
-        relatedTopics: topic.relatedTopics,
-      },
-    })
-  }
+  const filteredTopics = Object.entries(topics).filter(
+    ([_, topic]) =>
+      (!searchQuery ||
+        topic.name.toLowerCase().includes(searchQuery.toLowerCase())) &&
+      (!selectedCategory || topic.category === selectedCategory)
+  )
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
+      <View style={styles.centerContainer}>
+        <LoadingSpinner />
+        <Text style={styles.loadingText}>Loading topics...</Text>
       </View>
     )
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
-        <Text>Error: {error}</Text>
+      <View style={styles.centerContainer}>
+        <ErrorMessage message={error} />
       </View>
     )
   }
@@ -153,56 +127,31 @@ export default function TopicsOfInterestScreen() {
           >
             <ChevronLeft size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Topics of Interest</Text>
-        </View>
-
-        {/* Search and Filter */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Search size={20} color="#666" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search topics..."
-              value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text)
-                filterTopics(text, selectedCategory)
-              }}
-            />
-          </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <Filter size={20} color="#666" />
-          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Topics Settings</Text>
         </View>
 
         <ScrollView style={styles.content}>
-          {/* Recent Topics */}
-          {recentTopics.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Topics</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.recentTopicsContainer}
-              >
-                {recentTopics.map(([topicId, topic]) => (
-                  <TouchableOpacity
-                    key={topicId}
-                    style={styles.recentTopicCard}
-                    onPress={() => handleTopicPress(topic)}
-                  >
-                    {topic.emoji && (
-                      <Text style={styles.recentTopicEmoji}>{topic.emoji}</Text>
-                    )}
-                    <Text style={styles.recentTopicName}>{topic.name}</Text>
-                    <Text style={styles.recentTopicCategory}>
-                      {topic.category}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+          {/* Info Section */}
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>Manage Your Topics</Text>
+            <Text style={styles.infoText}>
+              Here you can manage topics you've interacted with. Remove topics
+              you're no longer interested in to keep your learning focused.
+            </Text>
+          </View>
+
+          {/* Search */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+              <Search size={20} color="#666" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search topics..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
             </View>
-          )}
+          </View>
 
           {/* Categories */}
           <ScrollView
@@ -215,10 +164,7 @@ export default function TopicsOfInterestScreen() {
                 styles.categoryChip,
                 !selectedCategory && styles.selectedCategory,
               ]}
-              onPress={() => {
-                setSelectedCategory(null)
-                filterTopics(searchQuery, null)
-              }}
+              onPress={() => setSelectedCategory(null)}
             >
               <Text
                 style={[
@@ -236,10 +182,7 @@ export default function TopicsOfInterestScreen() {
                   styles.categoryChip,
                   selectedCategory === category && styles.selectedCategory,
                 ]}
-                onPress={() => {
-                  setSelectedCategory(category)
-                  filterTopics(searchQuery, category)
-                }}
+                onPress={() => setSelectedCategory(category)}
               >
                 <Text
                   style={[
@@ -248,28 +191,33 @@ export default function TopicsOfInterestScreen() {
                       styles.selectedCategoryText,
                   ]}
                 >
-                  {category}
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          {/* All Topics */}
+          {/* Topics List */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>All Topics</Text>
             {filteredTopics.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No topics found</Text>
+                <Text style={styles.emptyStateTitle}>No topics found</Text>
+                <Text style={styles.emptyStateText}>
+                  {searchQuery || selectedCategory
+                    ? "Try adjusting your search or filters"
+                    : "Start exploring topics from the discovery page"}
+                </Text>
               </View>
             ) : (
-              filteredTopics.map(([topicId, topic]) => (
-                <TopicItem
-                  key={topicId}
-                  topic={topic}
-                  onPress={() => handleTopicPress(topic)}
-                  onDelete={() => removeTopic(topicId)}
-                />
-              ))
+              <View style={styles.topicsList}>
+                {filteredTopics.map(([topicId, topic]) => (
+                  <TopicItem
+                    key={topicId}
+                    topic={topic}
+                    onRemove={() => removeTopic(topicId)}
+                  />
+                ))}
+              </View>
             )}
           </View>
         </ScrollView>
@@ -300,13 +248,31 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
   },
-  searchContainer: {
-    flexDirection: "row",
+  content: {
+    flex: 1,
+  },
+  infoSection: {
     padding: 16,
-    gap: 12,
+    backgroundColor: "#f8f9fa",
+    margin: 16,
+    borderRadius: 12,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+  },
+  searchContainer: {
+    padding: 16,
+    paddingTop: 0,
   },
   searchBar: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f5f5f5",
@@ -319,53 +285,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
   },
-  filterButton: {
-    width: 44,
-    height: 44,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    flex: 1,
-  },
-  section: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-    color: "#000",
-  },
-  recentTopicsContainer: {
-    paddingRight: 16,
-    gap: 12,
-  },
-  recentTopicCard: {
-    backgroundColor: "#f8f9fa",
-    padding: 16,
-    borderRadius: 12,
-    width: 140,
-    alignItems: "center",
-  },
-  recentTopicEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  recentTopicName: {
-    fontSize: 14,
-    fontWeight: "500",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  recentTopicCategory: {
-    fontSize: 12,
-    color: "#666",
-  },
   categoriesContainer: {
     padding: 16,
+    paddingTop: 0,
     gap: 8,
   },
   categoryChip: {
@@ -386,10 +308,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "500",
   },
+  section: {
+    padding: 16,
+  },
+  topicsList: {
+    gap: 12,
+  },
   topicItem: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#f0f0f0",
   },
@@ -400,7 +327,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
   },
   topicInfo: {
     flexDirection: "row",
@@ -416,16 +342,20 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
   },
-  moreButton: {
+  removeButton: {
     padding: 4,
   },
   topicMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginTop: 12,
   },
   categoryBadge: {
-    backgroundColor: "#f0f0f0",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f5f5f5",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -434,22 +364,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
   },
-  lastAccessed: {
+  difficultyBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-  },
-  lastAccessedText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  difficultyBadge: {
-    alignSelf: "flex-start",
     backgroundColor: "#8a2be215",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    marginTop: 8,
   },
   difficultyText: {
     fontSize: 12,
@@ -460,9 +382,27 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: "center",
   },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#666",
     textAlign: "center",
+    lineHeight: 20,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#666",
   },
 })
