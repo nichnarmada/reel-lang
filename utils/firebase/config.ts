@@ -14,6 +14,7 @@ export const FIREBASE_COLLECTIONS = {
   SESSIONS: "sessions",
   QUIZZES: "quizzes",
   SAVED_VIDEOS: "savedVideos",
+  FAVORITED_TOPICS: "favoritedTopics",
 } as const
 
 // Type for collection names to ensure type safety

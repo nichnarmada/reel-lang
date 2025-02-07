@@ -24,6 +24,7 @@ import {
   BookOpen,
   X,
   Sparkles,
+  Star,
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
 import {
@@ -42,6 +43,7 @@ import { SessionDuration } from "@/types/session"
 import { capitalizeText } from "../../utils/utils"
 import { colorManager } from "../../constants/categoryColors"
 import { generateSingleTopic } from "../../services/topics/singleTopicGenerator"
+import { useSavedTopics } from "../../hooks/useSavedTopics"
 const WINDOW_WIDTH = Dimensions.get("window").width
 
 interface TopicDetailsParams {
@@ -62,9 +64,12 @@ export default function TopicDetailsScreen() {
   const [showDurationModal, setShowDurationModal] = useState(false)
   const [generatingTopic, setGeneratingTopic] = useState<string | null>(null)
   const pulseAnim = useRef(new Animated.Value(1)).current
+  const starScale = useRef(new Animated.Value(1)).current
   const topicColors = useRef<
     Record<string, { background: string; text: string }>
   >({}).current
+
+  const { favoriteTopic, unfavoriteTopic, isTopicFavorited } = useSavedTopics()
 
   const isGenerated = params.isGenerated === "true"
 
@@ -288,6 +293,37 @@ export default function TopicDetailsScreen() {
     }
   }
 
+  const handleFavoritePress = async () => {
+    if (!topic) return
+
+    try {
+      // Animate the star
+      Animated.sequence([
+        Animated.spring(starScale, {
+          toValue: 1.2,
+          useNativeDriver: true,
+        }),
+        Animated.spring(starScale, {
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+      ]).start()
+
+      const topicId = `${topic.category}-${topic.name
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`
+
+      if (isTopicFavorited(topicId)) {
+        await unfavoriteTopic(topicId)
+      } else {
+        await favoriteTopic(topic)
+      }
+    } catch (err) {
+      console.error("Error toggling favorite:", err)
+      // You might want to show an error toast here
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -335,6 +371,30 @@ export default function TopicDetailsScreen() {
                 )}
                 <Text style={styles.headerTitle}>{topic.name}</Text>
               </View>
+              {topic && (
+                <Animated.View
+                  style={[
+                    styles.favoriteButton,
+                    { transform: [{ scale: starScale }] },
+                  ]}
+                >
+                  <TouchableOpacity onPress={handleFavoritePress}>
+                    <Star
+                      size={24}
+                      color="#8a2be2"
+                      fill={
+                        isTopicFavorited(
+                          `${topic.category}-${topic.name
+                            .toLowerCase()
+                            .replace(/\s+/g, "-")}`
+                        )
+                          ? "#8a2be2"
+                          : "transparent"
+                      }
+                    />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
             </View>
           </View>
 
@@ -864,5 +924,9 @@ const styles = StyleSheet.create({
   relatedTopicText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  favoriteButton: {
+    padding: 8,
+    marginLeft: 8,
   },
 })
