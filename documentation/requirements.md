@@ -13,6 +13,8 @@
   - [x] AI-powered topic generation
   - [x] Visual topic indicators (emojis)
   - [x] Dynamic topic styling
+  - [x] Related topics with emojis
+  - [x] Smooth loading states
 
 - [x] Video Feed System
 
@@ -50,6 +52,8 @@
   - [x] Category-based organization
   - [x] Visual topic representation
   - [x] Topic refresh/shuffle
+  - [x] Related topics navigation
+  - [x] Consistent topic colors
 - [x] Video bookmarking
 - [ ] Session scheduling
 - [x] Basic achievements

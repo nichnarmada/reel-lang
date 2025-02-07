@@ -19,6 +19,10 @@
 - [x] As a learner, I want to pause my session if needed
 - [x] As a learner, I want to discover new topics through AI suggestions
 - [x] As a learner, I want to refresh topic suggestions when I want new ideas
+- [x] As a learner, I want to explore related topics with visual indicators
+- [x] As a learner, I want clear feedback when content is loading
+- [x] As a learner, I want consistent visual styling when navigating between topics
+- [x] As a learner, I want smooth transitions between different topics
 
 ## Week 2
 
