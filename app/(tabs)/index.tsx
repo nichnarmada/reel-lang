@@ -451,12 +451,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
-    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 12,
   },
   shuffleText: {
     fontSize: 14,
     color: "#666",
-    marginRight: 4,
+    marginRight: 8,
   },
   shuffleIconContainer: {
     backgroundColor: "#f0f0f0",
