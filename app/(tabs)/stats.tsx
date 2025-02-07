@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React from "react"
 import {
   View,
   Text,
@@ -7,53 +7,30 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
+  TextInput,
 } from "react-native"
 import { router } from "expo-router"
 import {
-  ChevronRight,
+  Search,
+  Filter,
+  BarChart2,
+  Calendar,
+  Play,
   Clock,
-  Brain,
-  History,
-  Sparkles,
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
-import { getDocument, FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
-import { UserStats } from "../../types/user"
+import { format } from "date-fns"
+import { useUserTopics } from "../../hooks/useUserTopics"
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
-const CARD_MARGIN = 8
-const CARD_WIDTH = (SCREEN_WIDTH - 32 - CARD_MARGIN * 2) / 2
 
 export default function StatsScreen() {
   const { user } = useAuth()
-  const [stats, setStats] = useState<UserStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { topics, loading: topicsLoading, error: topicsError } = useUserTopics()
 
-  useEffect(() => {
-    if (!user) return
-
-    const userDoc = getDocument(FIREBASE_COLLECTIONS.USERS, user.uid)
-    const unsubscribe = userDoc.onSnapshot(
-      (doc) => {
-        if (doc.exists) {
-          setStats(doc.data()?.stats || null)
-        }
-        setLoading(false)
-      },
-      (err) => {
-        console.error("Error loading stats:", err)
-        setError("Failed to load stats")
-        setLoading(false)
-      }
-    )
-
-    return () => unsubscribe()
-  }, [user])
-
-  if (loading) {
+  if (topicsLoading) {
     return (
       <View style={styles.centerContainer}>
         <LoadingSpinner />
@@ -62,13 +39,24 @@ export default function StatsScreen() {
     )
   }
 
-  if (error || !stats) {
+  if (topicsError) {
     return (
       <View style={styles.centerContainer}>
-        <ErrorMessage message={error || "Stats not found"} />
+        <ErrorMessage message={topicsError} />
       </View>
     )
   }
+
+  // Calculate total time and sessions from topics
+  const totalTimeSpent = Object.values(topics).reduce(
+    (acc, topic) => acc + topic.stats.totalTimeSpent,
+    0
+  )
+  const totalSessions = Object.values(topics).reduce(
+    (acc, topic) => acc + topic.stats.totalSessions,
+    0
+  )
+  const activeTopics = Object.keys(topics).length
 
   return (
     <ScrollView style={styles.container}>
@@ -76,90 +64,98 @@ export default function StatsScreen() {
         <Text style={styles.title}>Learning Journey</Text>
       </View>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push("/quiz-history")}
-        >
-          <History size={20} color="#8a2be2" />
-          <Text style={styles.actionButtonText}>Learning History</Text>
-          <ChevronRight size={16} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats Overview Cards */}
-      <View style={styles.statsGrid}>
-        <View style={[styles.statsCard, styles.cardPurple]}>
-          <Clock size={24} color="#8a2be2" />
-          <Text style={styles.statValue}>
-            {Math.round(stats.totalLearningTime / 60)}h
-          </Text>
-          <Text style={styles.statLabel}>Learning Time</Text>
-        </View>
-
-        <View style={[styles.statsCard, styles.cardBlue]}>
-          <Brain size={24} color="#4a90e2" />
-          <Text style={styles.statValue}>
-            {stats.topicsProgress.explored.length}
-          </Text>
-          <Text style={styles.statLabel}>Topics Explored</Text>
-        </View>
-
-        <View style={[styles.statsCard, styles.cardGreen]}>
-          <Sparkles size={24} color="#4CAF50" />
-          <Text style={styles.statValue}>{stats.learningStreaks.current}</Text>
-          <Text style={styles.statLabel}>Day Streak</Text>
-        </View>
-
-        <View style={[styles.statsCard, styles.cardOrange]}>
-          <History size={24} color="#ff9800" />
-          <Text style={styles.statValue}>{stats.sessionsCompleted}</Text>
-          <Text style={styles.statLabel}>Sessions Done</Text>
-        </View>
-      </View>
-
-      {/* Learning Streak */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Learning Streak</Text>
-        <View style={styles.streakCard}>
-          <View style={styles.streakInfo}>
-            <Text style={styles.streakValue}>
-              {stats.learningStreaks.current}
-            </Text>
-            <Text style={styles.streakLabel}>Current Streak</Text>
+      {/* Learning Journey Summary */}
+      <View style={styles.summaryHeader}>
+        <Text style={styles.summaryTitle}>Your Learning Journey</Text>
+        <View style={styles.summaryStats}>
+          <View style={styles.summaryStatItem}>
+            <Text style={styles.summaryStatValue}>{totalTimeSpent}</Text>
+            <Text style={styles.summaryStatLabel}>Minutes Learned</Text>
           </View>
-          <View style={styles.streakInfo}>
-            <Text style={styles.streakValue}>
-              {stats.learningStreaks.longest}
-            </Text>
-            <Text style={styles.streakLabel}>Longest Streak</Text>
+          <View style={styles.summaryStatItem}>
+            <Text style={styles.summaryStatValue}>{totalSessions}</Text>
+            <Text style={styles.summaryStatLabel}>Sessions</Text>
+          </View>
+          <View style={styles.summaryStatItem}>
+            <Text style={styles.summaryStatValue}>{activeTopics}</Text>
+            <Text style={styles.summaryStatLabel}>Active Topics</Text>
           </View>
         </View>
       </View>
 
-      {/* Recent Topics */}
+      {/* Topic Progress */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Topics</Text>
-        <View style={styles.topicsList}>
-          {stats.topicsProgress.explored.slice(0, 3).map((topic) => (
-            <View key={topic.topicId} style={styles.topicItem}>
-              <View>
-                <Text style={styles.topicName}>{topic.topicName}</Text>
-                <Text style={styles.topicStats}>
-                  {Math.round(topic.timeSpent / 60)}h spent learning
-                  {topic.subTopics &&
-                    topic.subTopics.length > 0 &&
-                    ` · ${topic.subTopics.length} sub-topics`}
-                </Text>
-              </View>
-              {topic.parentTopic && (
-                <View style={styles.parentTopicBadge}>
-                  <Text style={styles.parentTopicText}>
-                    Part of {topic.parentTopic}
-                  </Text>
+        <Text style={styles.sectionTitle}>Topic Progress</Text>
+
+        {/* Search and Sort */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Search size={20} color="#666" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search topics..."
+            />
+          </View>
+          <TouchableOpacity style={styles.filterButton}>
+            <Filter size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Topic List */}
+        <View style={styles.topicProgressList}>
+          {Object.entries(topics).map(([topicId, topic]) => (
+            <View key={topicId} style={styles.progressTopicItem}>
+              <View style={styles.topicMain}>
+                <View style={styles.topicHeader}>
+                  <View style={styles.titleRow}>
+                    {topic.emoji && (
+                      <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+                    )}
+                    <Text style={styles.progressTopicName}>{topic.name}</Text>
+                  </View>
+                  <View style={styles.categoryBadge}>
+                    <Text style={styles.categoryText}>
+                      {topic.category.charAt(0).toUpperCase() +
+                        topic.category.slice(1)}
+                    </Text>
+                  </View>
                 </View>
-              )}
+
+                <View style={styles.topicStats}>
+                  <View style={styles.statItem}>
+                    <Clock size={14} color="#666" />
+                    <Text style={styles.statText}>
+                      {topic.stats.totalTimeSpent} mins total
+                    </Text>
+                  </View>
+                  <Text style={styles.statDivider}>•</Text>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statText}>
+                      {topic.stats.totalSessions} sessions
+                    </Text>
+                  </View>
+                  <Text style={styles.statDivider}>•</Text>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statText}>
+                      Last:{" "}
+                      {format(
+                        new Date(topic.stats.lastSessionDate.seconds * 1000),
+                        "MMM d"
+                      )}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.continueButton}
+                  onPress={() => router.push(`/topic/${topicId}`)}
+                >
+                  <Play size={16} color="#8a2be2" />
+                  <Text style={styles.continueButtonText}>
+                    Continue Learning
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </View>
@@ -185,58 +181,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
   },
-  quickActions: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    color: "#333",
-    flex: 1,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: 8,
-    gap: 8,
-  },
-  statsCard: {
-    width: CARD_WIDTH,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    gap: 8,
-  },
-  cardPurple: {
-    backgroundColor: "#8a2be215",
-  },
-  cardBlue: {
-    backgroundColor: "#4a90e215",
-  },
-  cardGreen: {
-    backgroundColor: "#4CAF5015",
-  },
-  cardOrange: {
-    backgroundColor: "#ff980015",
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  statLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
   section: {
     padding: 16,
     borderTopWidth: 1,
@@ -248,55 +192,105 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#000",
   },
-  streakCard: {
+  searchContainer: {
     flexDirection: "row",
-    backgroundColor: "#8a2be215",
-    borderRadius: 12,
-    padding: 16,
+    gap: 12,
+    marginBottom: 16,
   },
-  streakInfo: {
+  searchBar: {
     flex: 1,
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
   },
-  streakValue: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#8a2be2",
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
   },
-  streakLabel: {
-    fontSize: 14,
-    color: "#666",
+  filterButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  topicsList: {
+  topicProgressList: {
     gap: 12,
   },
-  topicItem: {
+  progressTopicItem: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    padding: 4,
+  },
+  topicMain: {
+    padding: 16,
+  },
+  topicHeader: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    padding: 16,
-    borderRadius: 12,
+    gap: 8,
   },
-  topicName: {
-    fontSize: 16,
-    fontWeight: "500",
+  topicEmoji: {
+    fontSize: 24,
+  },
+  progressTopicName: {
+    fontSize: 18,
+    fontWeight: "600",
     color: "#000",
-    marginBottom: 4,
+  },
+  categoryBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  categoryText: {
+    fontSize: 12,
+    color: "#666",
   },
   topicStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statText: {
     fontSize: 14,
     color: "#666",
   },
-  parentTopicBadge: {
-    marginLeft: "auto",
-    backgroundColor: "#8a2be215",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  statDivider: {
+    color: "#666",
+    marginHorizontal: 8,
   },
-  parentTopicText: {
+  continueButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#8a2be215",
+    gap: 8,
+  },
+  continueButtonText: {
+    fontSize: 16,
     color: "#8a2be2",
-    fontSize: 12,
     fontWeight: "500",
   },
   centerContainer: {
@@ -308,6 +302,36 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
+    color: "#666",
+  },
+  summaryHeader: {
+    padding: 20,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    margin: 16,
+    marginTop: 0,
+  },
+  summaryTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 16,
+    color: "#000",
+  },
+  summaryStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  summaryStatItem: {
+    alignItems: "center",
+  },
+  summaryStatValue: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#8a2be2",
+    marginBottom: 4,
+  },
+  summaryStatLabel: {
+    fontSize: 12,
     color: "#666",
   },
 })
