@@ -4,9 +4,9 @@ import { GeneratedTopic } from "./topic"
 export interface TopicGenerationInput {
   userId: string
   preferredCategories: string[]
-  skillLevels: Record<string, DifficultyLevel>
   exploredTopics?: string[]
   topicsPerCategory?: number
+  topicNumber?: number
 }
 
 export interface GeneratedTopicSuggestion extends Omit<GeneratedTopic, "id"> {
@@ -26,6 +26,6 @@ export interface TopicSuggestionCache {
 
 export interface PromptContext {
   category: string
-  userSkillLevel: DifficultyLevel
   previousTopics: string[]
+  topicNumber: number
 }

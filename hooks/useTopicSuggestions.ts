@@ -87,8 +87,8 @@ export const useTopicSuggestions = (
       const result = await generateTopicSuggestions({
         userId,
         preferredCategories: preferences.preferredCategories,
-        skillLevels: {},
         exploredTopics: [],
+        topicNumber: 3,
       })
 
       const newErrors: Record<string, string> = {}

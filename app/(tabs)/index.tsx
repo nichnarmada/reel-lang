@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import {
   View,
   Text,
@@ -8,17 +8,194 @@ import {
   RefreshControl,
   TextInput,
   Platform,
+  Modal,
+  Animated,
 } from "react-native"
 import { router } from "expo-router"
 import { useAuth } from "../../contexts/auth"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
-import { Search, Shuffle } from "lucide-react-native"
+import { Search, Shuffle, Send } from "lucide-react-native"
 import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../../hooks/useUserPreferences"
 import { useTopicSuggestions } from "../../hooks/useTopicSuggestions"
 import { colorManager } from "../../constants/categoryColors"
 import { GeneratedTopic } from "../../types/topic"
+import { generateTopicSuggestions } from "../../services/topics/topicGenerator"
+
+interface AIModalProps {
+  visible: boolean
+  onTopicSelect: (topic: GeneratedTopic) => void
+  onClose: () => void
+  searchQuery: string
+  userId: string
+}
+
+const AIThinkingModal = ({
+  visible,
+  onTopicSelect,
+  onClose,
+  searchQuery,
+  userId,
+}: AIModalProps) => {
+  const [dots, setDots] = useState("...")
+  const [modalVisible, setModalVisible] = useState(visible)
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const [isThinking, setIsThinking] = useState(true)
+  const [suggestedTopics, setSuggestedTopics] = useState<GeneratedTopic[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  const generateTopics = async () => {
+    try {
+      const result = await generateTopicSuggestions({
+        userId,
+        preferredCategories: [searchQuery],
+        topicNumber: 6,
+      })
+
+      // Get the topics from the first category in the result
+      const firstCategory = Object.values(result)[0] || []
+      setSuggestedTopics(firstCategory)
+      setIsThinking(false)
+    } catch (err) {
+      console.error("Error generating topics:", err)
+      setError(err instanceof Error ? err.message : "Failed to generate topics")
+      setIsThinking(false)
+    }
+  }
+
+  useEffect(() => {
+    if (visible) {
+      setModalVisible(true)
+      setIsThinking(true)
+      setError(null)
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start()
+
+      // Generate topics when modal becomes visible
+      generateTopics()
+    } else {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setModalVisible(false)
+        setIsThinking(true)
+        setSuggestedTopics([])
+        setError(null)
+      })
+    }
+  }, [visible, searchQuery])
+
+  useEffect(() => {
+    if (modalVisible && isThinking) {
+      const interval = setInterval(() => {
+        setDots((current) => (current.length >= 3 ? "" : current + "."))
+      }, 500)
+      return () => clearInterval(interval)
+    }
+  }, [modalVisible, isThinking])
+
+  // Get colors for topics
+  const topicColors = useMemo(() => {
+    return suggestedTopics.map(() => colorManager.getNextColor())
+  }, [suggestedTopics])
+
+  if (!modalVisible) return null
+
+  return (
+    <Modal transparent visible={modalVisible} animationType="none">
+      <Animated.View
+        style={[
+          styles.modalOverlay,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.modalContent,
+            {
+              transform: [
+                {
+                  scale: fadeAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.95, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.modalCard}>
+            {isThinking ? (
+              <>
+                <Text style={styles.thinkingText}>AI is thinking{dots}</Text>
+                <Text style={styles.thinkingSubtext}>
+                  Finding the perfect topics for you
+                </Text>
+              </>
+            ) : error ? (
+              <>
+                <Text style={styles.errorText}>Oops! Something went wrong</Text>
+                <Text style={styles.errorSubtext}>{error}</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => {
+                    setIsThinking(true)
+                    generateTopics()
+                  }}
+                >
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.resultsTitle}>Suggested Topics</Text>
+                <View style={styles.topicResults}>
+                  {suggestedTopics.map((topic, index) => {
+                    const colors = topicColors[index]
+                    return (
+                      <TouchableOpacity
+                        key={`${topic.category}-${topic.name}`}
+                        style={[
+                          styles.topicResultItem,
+                          { backgroundColor: colors.background },
+                        ]}
+                        onPress={() => {
+                          onTopicSelect(topic)
+                          onClose()
+                        }}
+                      >
+                        <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+                        <Text
+                          style={[
+                            styles.topicBadgeText,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {topic.name}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  )
+}
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
@@ -38,6 +215,7 @@ export default function DiscoverScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isModalVisible, setIsModalVisible] = useState(false)
 
   // Function to shuffle array
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -86,8 +264,8 @@ export default function DiscoverScreen() {
 
   // Handle search submission
   const handleSearchSubmit = () => {
-    // TODO: Implement search functionality
-    console.log("Search submitted:", searchQuery)
+    if (searchQuery.trim().length === 0) return
+    setIsModalVisible(true)
   }
 
   const onRefresh = async () => {
@@ -116,6 +294,11 @@ export default function DiscoverScreen() {
   // Combine error states
   const combinedError =
     userPreferencesError || topicSuggestionsErrors.general || loadError
+
+  // Memoize topic colors to keep them stable across re-renders
+  const topicColors = useMemo(() => {
+    return displayedSuggestions.map(() => colorManager.getNextColor())
+  }, [displayedSuggestions]) // Only regenerate colors when suggestions change
 
   if (isLoading) {
     return (
@@ -150,78 +333,97 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View style={styles.mainContent}>
-        {/* Centered Header with Search */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>What would you like to learn?</Text>
-          <Text style={styles.headerSubtitle}>
-            Type a topic or question, and we'll help you discover relevant
-            content
-          </Text>
-          <View style={styles.searchContainer}>
-            <Search size={20} color="#888" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="e.g. 'Python programming' or 'Ancient Egypt'"
-              placeholderTextColor="#888"
-              onSubmitEditing={handleSearchSubmit}
-              returnKeyType="search"
-            />
-          </View>
-
-          {/* AI Generated Topic Suggestions */}
-          <View style={styles.suggestedTopics}>
-            <View style={styles.topicBadges}>
-              {displayedSuggestions.map((topic) => {
-                const colors = colorManager.getNextColor()
-                return (
-                  <TouchableOpacity
-                    key={`${topic.category}-${topic.name}`}
-                    style={[
-                      styles.topicBadge,
-                      { backgroundColor: colors.background },
-                    ]}
-                    onPress={() => handleTopicSelect(topic)}
-                    accessibilityLabel={`Learn about ${topic.name}`}
-                  >
-                    {topic.emoji && (
-                      <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-                    )}
-                    <Text
-                      style={[styles.topicBadgeText, { color: colors.text }]}
-                    >
-                      {topic.name}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.mainContent}>
+          {/* Centered Header with Search */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>
+              What would you like to learn?
+            </Text>
+            <Text style={styles.headerSubtitle}>
+              Type a topic or question, and we'll help you discover relevant
+              content
+            </Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="e.g. 'Ancient Egypt' or 'Politics'"
+                placeholderTextColor="#888"
+                returnKeyType="send"
+              />
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  { opacity: searchQuery.trim().length > 0 ? 1 : 0.5 },
+                ]}
+                onPress={handleSearchSubmit}
+                disabled={searchQuery.trim().length === 0}
+              >
+                <Send size={20} color="#8a2be2" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.shuffleButton}
-              onPress={() => {
-                colorManager.reset() // Reset color pool when shuffling
-                shuffleSuggestions()
-              }}
-              accessibilityLabel="Show different topics"
-            >
-              <Text style={styles.shuffleText}>Discover something new</Text>
-              <View style={styles.shuffleIconContainer}>
-                <Shuffle size={16} color="#666" />
+
+            {/* AI Generated Topic Suggestions */}
+            <View style={styles.suggestedTopics}>
+              <View style={styles.topicBadges}>
+                {displayedSuggestions.map((topic, index) => {
+                  const colors = topicColors[index]
+                  return (
+                    <TouchableOpacity
+                      key={`${topic.category}-${topic.name}`}
+                      style={[
+                        styles.topicBadge,
+                        { backgroundColor: colors.background },
+                      ]}
+                      onPress={() => handleTopicSelect(topic)}
+                      accessibilityLabel={`Learn about ${topic.name}`}
+                    >
+                      {topic.emoji && (
+                        <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+                      )}
+                      <Text
+                        style={[styles.topicBadgeText, { color: colors.text }]}
+                      >
+                        {topic.name}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
               </View>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shuffleButton}
+                onPress={() => {
+                  colorManager.reset() // Reset color pool when shuffling
+                  shuffleSuggestions()
+                }}
+                accessibilityLabel="Show different topics"
+              >
+                <Text style={styles.shuffleText}>Discover something new</Text>
+                <View style={styles.shuffleIconContainer}>
+                  <Shuffle size={16} color="#666" />
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+      <AIThinkingModal
+        visible={isModalVisible}
+        onTopicSelect={handleTopicSelect}
+        onClose={() => setIsModalVisible(false)}
+        searchQuery={searchQuery}
+        userId={user?.uid || ""}
+      />
+    </>
   )
 }
 
@@ -285,6 +487,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     height: "100%",
     color: "#1a1a1a",
+    paddingRight: 12,
+  },
+  sendButton: {
+    padding: 8,
+    borderRadius: 8,
   },
   section: {
     marginBottom: 40,
@@ -471,5 +678,87 @@ const styles = StyleSheet.create({
   topicEmoji: {
     fontSize: 16,
     marginRight: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    padding: 20,
+    width: "100%",
+    maxWidth: 400,
+  },
+  modalCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  thinkingText: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 8,
+  },
+  thinkingSubtext: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  resultsTitle: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  topicResults: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+  },
+  topicResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginRight: 4,
+    marginBottom: 4,
+  },
+  closeButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+    alignSelf: "center",
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+  },
+  errorText: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#dc3545",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
   },
 })

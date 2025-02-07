@@ -17,7 +17,6 @@ const CACHE_COLLECTION = "topicSuggestionCache"
 const buildPrompt = (context: PromptContext): string => {
   return `Generate specialized learning topic suggestions based on the following context:
 Category: ${context.category}
-User Skill Level: ${context.userSkillLevel}
 Previously Explored Topics: ${context.previousTopics.join(", ")}
 
 Please generate topic suggestions in the following JSON format:
@@ -43,17 +42,16 @@ Please generate topic suggestions in the following JSON format:
 ]
 
 Requirements:
-1. Generate exactly 3 topics
-2. Topic names should be clear and concise (e.g., "Photography Composition" not "Basic Photography Composition (Beginner)")
-3. Topic names should not include difficulty levels or skill indicators
-4. Include one relevant emoji that best represents the topic
-5. Each related topic must have its own relevant emoji
-6. Include 2-4 related topics per main topic
-7. Ensure all JSON fields are present
-8. Confidence should be a number between 0 and 1
-9. Keep descriptions concise (max 100 characters)
-10. Include 3-5 search terms
-11. Format as a valid JSON array
+1. Generate exactly ${context.topicNumber} topics
+2. Topic names should be clear and concise (e.g., "Photography Composition" not "Basic Photography Composition")
+3. Include one relevant emoji that best represents the topic
+4. Each related topic must have its own relevant emoji
+5. Include 2-4 related topics per main topic
+6. Ensure all JSON fields are present
+7. Confidence should be a number between 0 and 1
+8. Keep descriptions concise (max 100 characters)
+9. Include 3-5 search terms
+10. Format as a valid JSON array
 
 Examples of good topic and emoji combinations:
 - "Camera Modes" 📸
@@ -211,8 +209,8 @@ export const generateTopicSuggestions = async (
         // Generate new suggestions
         const context: PromptContext = {
           category,
-          userSkillLevel: input.skillLevels[category] || "beginner",
           previousTopics: input.exploredTopics || [],
+          topicNumber: input.topicNumber || 3,
         }
 
         const { success, error, suggestions } = await generateForCategory(
