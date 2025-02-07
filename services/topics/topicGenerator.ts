@@ -76,7 +76,7 @@ interface TopicSuggestionCache {
   expiresAt: Timestamp
 }
 
-const processAIResponse = async (
+export const processAIResponse = async (
   response: string,
   category: string
 ): Promise<GeneratedTopic[]> => {

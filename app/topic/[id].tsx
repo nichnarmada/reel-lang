@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   Platform,
   Modal,
   Dimensions,
+  Animated,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
-import { GeneratedTopic } from "../../types/topic"
+import { GeneratedTopic, RelatedTopic } from "../../types/topic"
 import { UserGeneratedTopic } from "../../types/user"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
@@ -40,6 +41,7 @@ import { DifficultyLevel } from "../../types"
 import { SessionDuration } from "@/types/session"
 import { capitalizeText } from "../../utils/utils"
 import { colorManager } from "../../constants/categoryColors"
+import { generateSingleTopic } from "../../services/topics/singleTopicGenerator"
 const WINDOW_WIDTH = Dimensions.get("window").width
 
 interface TopicDetailsParams {
@@ -58,6 +60,11 @@ export default function TopicDetailsScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showDurationModal, setShowDurationModal] = useState(false)
+  const [generatingTopic, setGeneratingTopic] = useState<string | null>(null)
+  const pulseAnim = useRef(new Animated.Value(1)).current
+  const topicColors = useRef<
+    Record<string, { background: string; text: string }>
+  >({}).current
 
   const isGenerated = params.isGenerated === "true"
 
@@ -150,6 +157,27 @@ export default function TopicDetailsScreen() {
     user,
   ])
 
+  useEffect(() => {
+    if (generatingTopic) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.6,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start()
+    } else {
+      pulseAnim.setValue(1)
+    }
+  }, [generatingTopic])
+
   const handleStartLearning = async (duration: SessionDuration) => {
     if (!topic || !user) return
 
@@ -215,6 +243,48 @@ export default function TopicDetailsScreen() {
     } catch (err) {
       console.error("Error updating difficulty:", err)
       // Show error to user
+    }
+  }
+
+  const handleRelatedTopicPress = async (relatedTopic: RelatedTopic) => {
+    if (!topic) return
+
+    try {
+      // Generate full topic details
+      const generatedTopic = await generateSingleTopic(
+        relatedTopic.name,
+        topic.category,
+        relatedTopic.emoji
+      )
+
+      if (!generatedTopic) {
+        throw new Error("Failed to generate topic details")
+      }
+
+      // Generate a consistent ID
+      const topicId = `${topic.category}-${relatedTopic.name
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`
+
+      // Navigate to topic details
+      router.push({
+        pathname: "/topic/[id]",
+        params: {
+          id: topicId,
+          isGenerated: "true",
+          category: topic.category,
+          name: relatedTopic.name,
+          description: generatedTopic.description,
+          emoji: relatedTopic.emoji,
+          reasonForSuggestion: generatedTopic.reasonForSuggestion,
+          confidence: generatedTopic.confidence.toString(),
+          searchTerms: JSON.stringify(generatedTopic.searchTerms),
+          relatedTopics: JSON.stringify(generatedTopic.relatedTopics),
+        },
+      })
+    } catch (error) {
+      console.error("Error navigating to related topic:", error)
+      // TODO: Show error to user
     }
   }
 
@@ -325,27 +395,50 @@ export default function TopicDetailsScreen() {
             <Text style={styles.sectionTitle}>Related Topics</Text>
             <View style={styles.relatedTopicsContainer}>
               {topic.relatedTopics.map((relatedTopic) => {
-                const colors = colorManager.getNextColor()
+                // Memoize colors for each topic
+                if (!topicColors[relatedTopic.name]) {
+                  topicColors[relatedTopic.name] = colorManager.getNextColor()
+                }
+                const colors = topicColors[relatedTopic.name]
+                const isGenerating = generatingTopic === relatedTopic.name
+
                 return (
                   <TouchableOpacity
                     key={relatedTopic.name}
+                    disabled={isGenerating}
                     style={[
                       styles.relatedTopicButton,
                       { backgroundColor: colors.background },
                     ]}
-                    onPress={() => {
-                      // TODO: Navigate to related topic
-                      console.log("Navigate to:", relatedTopic)
+                    onPress={async () => {
+                      setGeneratingTopic(relatedTopic.name)
+                      try {
+                        await handleRelatedTopicPress(relatedTopic)
+                      } finally {
+                        setGeneratingTopic(null)
+                      }
                     }}
                   >
-                    <Text style={styles.relatedTopicEmoji}>
-                      {relatedTopic.emoji}
-                    </Text>
-                    <Text
-                      style={[styles.relatedTopicText, { color: colors.text }]}
+                    <Animated.View
+                      style={[
+                        styles.relatedTopicContent,
+                        isGenerating && {
+                          opacity: pulseAnim,
+                        },
+                      ]}
                     >
-                      {capitalizeText(relatedTopic.name)}
-                    </Text>
+                      <Text style={styles.relatedTopicEmoji}>
+                        {relatedTopic.emoji}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.relatedTopicText,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {capitalizeText(relatedTopic.name)}
+                      </Text>
+                    </Animated.View>
                   </TouchableOpacity>
                 )
               })}
@@ -756,11 +849,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   relatedTopicButton: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
+  },
+  relatedTopicContent: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   relatedTopicEmoji: {
