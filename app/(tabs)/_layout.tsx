@@ -4,14 +4,16 @@ import {
   UserRoundPen,
   Telescope,
   ChartNoAxesCombined,
+  GraduationCap,
 } from "lucide-react-native"
 import { LAYOUT } from "../../constants/layout"
+import { theme } from "../../constants/theme"
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#007AFF",
+        tabBarActiveTintColor: theme.colors.primary,
         tabBarStyle: {
           height: LAYOUT.TAB_BAR_HEIGHT,
         },
@@ -23,6 +25,13 @@ export default function TabLayout() {
         options={{
           title: "Discover",
           tabBarIcon: ({ color }) => <Telescope size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="learning"
+        options={{
+          title: "Learning",
+          tabBarIcon: ({ color }) => <GraduationCap size={24} color={color} />,
         }}
       />
       <Tabs.Screen

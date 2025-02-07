@@ -13,16 +13,19 @@ import { router } from "expo-router"
 import {
   Search,
   Filter,
-  BarChart2,
-  Calendar,
-  Play,
   Clock,
+  Trophy,
+  Target,
+  BookOpen,
+  Calendar,
+  TrendingUp,
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
 import { format } from "date-fns"
 import { useUserTopics } from "../../hooks/useUserTopics"
+import { theme } from "../../constants/theme"
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
 
@@ -61,100 +64,104 @@ export default function StatsScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Learning Journey</Text>
+        <Text style={styles.title}>Statistics</Text>
       </View>
 
-      {/* Learning Journey Summary */}
-      <View style={styles.summaryHeader}>
-        <Text style={styles.summaryTitle}>Your Learning Journey</Text>
-        <View style={styles.summaryStats}>
-          <View style={styles.summaryStatItem}>
-            <Text style={styles.summaryStatValue}>{totalTimeSpent}</Text>
-            <Text style={styles.summaryStatLabel}>Minutes Learned</Text>
+      {/* Overall Stats */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Overall Progress</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Clock size={24} color={theme.colors.primary} />
+            <Text style={styles.statValue}>{totalTimeSpent}m</Text>
+            <Text style={styles.statLabel}>Total Time</Text>
           </View>
-          <View style={styles.summaryStatItem}>
-            <Text style={styles.summaryStatValue}>{totalSessions}</Text>
-            <Text style={styles.summaryStatLabel}>Sessions</Text>
+          <View style={styles.statCard}>
+            <Target size={24} color={theme.colors.primary} />
+            <Text style={styles.statValue}>{totalSessions}</Text>
+            <Text style={styles.statLabel}>Sessions</Text>
           </View>
-          <View style={styles.summaryStatItem}>
-            <Text style={styles.summaryStatValue}>{activeTopics}</Text>
-            <Text style={styles.summaryStatLabel}>Active Topics</Text>
+          <View style={styles.statCard}>
+            <BookOpen size={24} color={theme.colors.primary} />
+            <Text style={styles.statValue}>{activeTopics}</Text>
+            <Text style={styles.statLabel}>Topics</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Trophy size={24} color={theme.colors.primary} />
+            <Text style={styles.statValue}>4</Text>
+            <Text style={styles.statLabel}>Achievements</Text>
           </View>
         </View>
       </View>
 
-      {/* Topic Progress */}
+      {/* Learning Trends */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Topic Progress</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Learning Trends</Text>
+          <TouchableOpacity style={styles.periodSelector}>
+            <Text style={styles.periodText}>This Month</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.trendsCard}>
+          <View style={styles.trendItem}>
+            <View style={styles.trendHeader}>
+              <TrendingUp size={20} color={theme.colors.status.success} />
+              <Text style={styles.trendValue}>+15%</Text>
+            </View>
+            <Text style={styles.trendLabel}>Learning Time</Text>
+          </View>
+          <View style={styles.trendItem}>
+            <View style={styles.trendHeader}>
+              <TrendingUp size={20} color={theme.colors.status.success} />
+              <Text style={styles.trendValue}>+3</Text>
+            </View>
+            <Text style={styles.trendLabel}>New Topics</Text>
+          </View>
+        </View>
+      </View>
 
-        {/* Search and Sort */}
+      {/* Topic History */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Topic History</Text>
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <Search size={20} color="#666" />
+            <Search size={20} color={theme.colors.text.secondary} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search topics..."
+              placeholderTextColor={theme.colors.text.secondary}
             />
           </View>
           <TouchableOpacity style={styles.filterButton}>
-            <Filter size={20} color="#666" />
+            <Filter size={20} color={theme.colors.text.secondary} />
           </TouchableOpacity>
         </View>
 
-        {/* Topic List */}
-        <View style={styles.topicProgressList}>
+        <View style={styles.topicList}>
           {Object.entries(topics).map(([topicId, topic]) => (
-            <View key={topicId} style={styles.progressTopicItem}>
-              <View style={styles.topicMain}>
-                <View style={styles.topicHeader}>
-                  <View style={styles.titleRow}>
-                    {topic.emoji && (
-                      <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-                    )}
-                    <Text style={styles.progressTopicName}>{topic.name}</Text>
-                  </View>
-                  <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryText}>
-                      {topic.category.charAt(0).toUpperCase() +
-                        topic.category.slice(1)}
-                    </Text>
-                  </View>
+            <View key={topicId} style={styles.topicCard}>
+              <View style={styles.topicHeader}>
+                <View style={styles.topicInfo}>
+                  {topic.emoji && (
+                    <Text style={styles.topicEmoji}>{topic.emoji}</Text>
+                  )}
+                  <Text style={styles.topicName}>{topic.name}</Text>
                 </View>
-
                 <View style={styles.topicStats}>
-                  <View style={styles.statItem}>
-                    <Clock size={14} color="#666" />
-                    <Text style={styles.statText}>
-                      {topic.stats.totalTimeSpent} mins total
-                    </Text>
-                  </View>
-                  <Text style={styles.statDivider}>•</Text>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statText}>
-                      {topic.stats.totalSessions} sessions
-                    </Text>
-                  </View>
-                  <Text style={styles.statDivider}>•</Text>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statText}>
-                      Last:{" "}
-                      {format(
-                        new Date(topic.stats.lastSessionDate.seconds * 1000),
-                        "MMM d"
-                      )}
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.continueButton}
-                  onPress={() => router.push(`/topic/${topicId}`)}
-                >
-                  <Play size={16} color="#8a2be2" />
-                  <Text style={styles.continueButtonText}>
-                    Continue Learning
+                  <Clock size={14} color={theme.colors.text.secondary} />
+                  <Text style={styles.topicStatText}>
+                    {topic.stats.totalTimeSpent}m
                   </Text>
-                </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.topicFooter}>
+                <Text style={styles.lastStudied}>
+                  Last studied:{" "}
+                  {format(
+                    new Date(topic.stats.lastSessionDate.seconds * 1000),
+                    "MMM d"
+                  )}
+                </Text>
               </View>
             </View>
           ))}
@@ -167,171 +174,188 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-  },
-  header: {
-    padding: 16,
-    paddingTop: Platform.OS === "ios" ? 60 : 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  section: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 16,
-    color: "#000",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topicProgressList: {
-    gap: 12,
-  },
-  progressTopicItem: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-    padding: 4,
-  },
-  topicMain: {
-    padding: 16,
-  },
-  topicHeader: {
-    marginBottom: 12,
-    gap: 8,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  topicEmoji: {
-    fontSize: 24,
-  },
-  progressTopicName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-  },
-  categoryBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#f5f5f5",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-  },
-  categoryText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  topicStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  statText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  statDivider: {
-    color: "#666",
-    marginHorizontal: 8,
-  },
-  continueButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "#8a2be215",
-    gap: 8,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    color: "#8a2be2",
-    fontWeight: "500",
+    backgroundColor: theme.colors.background.primary,
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    backgroundColor: theme.colors.background.primary,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#666",
+    marginTop: theme.spacing.sm,
+    color: theme.colors.text.secondary,
+    fontSize: theme.typography.sizes.md,
   },
-  summaryHeader: {
-    padding: 20,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    margin: 16,
-    marginTop: 0,
+  header: {
+    padding: theme.spacing.md,
+    paddingTop: Platform.OS === "ios" ? 60 : theme.spacing.md,
+    backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
   },
-  summaryTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 16,
-    color: "#000",
+  title: {
+    fontSize: theme.typography.sizes.xxl,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
   },
-  summaryStats: {
+  section: {
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
   },
-  summaryStatItem: {
+  sectionTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    marginBottom: theme.spacing.md,
+    color: theme.colors.text.primary,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: (SCREEN_WIDTH - theme.spacing.md * 3 - theme.spacing.sm * 2) / 2,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    ...theme.shadows.small,
+  },
+  statValue: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
+    marginTop: theme.spacing.sm,
+  },
+  statLabel: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xs,
+  },
+  periodSelector: {
+    backgroundColor: theme.colors.background.secondary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+  },
+  periodText: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+  },
+  trendsCard: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    ...theme.shadows.small,
+  },
+  trendItem: {
     alignItems: "center",
   },
-  summaryStatValue: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#8a2be2",
-    marginBottom: 4,
+  trendHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
   },
-  summaryStatLabel: {
-    fontSize: 12,
-    color: "#666",
+  trendValue: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.status.success,
+  },
+  trendLabel: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xs,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.sm,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: theme.spacing.sm,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.primary,
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topicList: {
+    gap: theme.spacing.sm,
+  },
+  topicCard: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    ...theme.shadows.small,
+  },
+  topicHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.sm,
+  },
+  topicInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+  },
+  topicEmoji: {
+    fontSize: theme.typography.sizes.xl,
+  },
+  topicName: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+  },
+  topicStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+  },
+  topicStatText: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+  },
+  topicFooter: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  lastStudied: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
   },
 })

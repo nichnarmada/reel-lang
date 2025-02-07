@@ -15,12 +15,12 @@ import {
   Share2,
   HelpCircle,
   ChevronRight,
-  Bookmark,
   Brain,
   Film,
 } from "lucide-react-native"
 import { HEADER_PADDING } from "../../constants/layout"
 import { useRouter } from "expo-router"
+import { theme } from "../../constants/theme"
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth()
@@ -60,20 +60,10 @@ export default function ProfileScreen() {
           onPress={() => router.push("/(profile)/topics-of-interest")}
         >
           <View style={styles.settingLeft}>
-            <Brain size={24} color="#666" />
+            <Brain size={24} color={theme.colors.text.secondary} />
             <Text style={styles.settingText}>Manage Topics</Text>
           </View>
-          <ChevronRight size={20} color="#666" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => router.push("/saved-videos")}
-        >
-          <View style={styles.settingLeft}>
-            <Bookmark size={24} color="#666" />
-            <Text style={styles.settingText}>Saved Videos</Text>
-          </View>
-          <ChevronRight size={20} color="#666" />
+          <ChevronRight size={20} color={theme.colors.text.secondary} />
         </TouchableOpacity>
       </View>
 
@@ -82,26 +72,26 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>App Settings</Text>
         <View style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Bell size={24} color="#666" />
+            <Bell size={24} color={theme.colors.text.secondary} />
             <Text style={styles.settingText}>Notifications</Text>
           </View>
           <Switch
             value={notificationsEnabled}
             onValueChange={setNotificationsEnabled}
-            trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={notificationsEnabled ? "#2196f3" : "#f4f3f4"}
+            trackColor={{ false: "#767577", true: theme.colors.primaryLight }}
+            thumbColor={notificationsEnabled ? theme.colors.primary : "#f4f3f4"}
           />
         </View>
         <View style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Film size={24} color="#666" />
+            <Film size={24} color={theme.colors.text.secondary} />
             <Text style={styles.settingText}>Autoplay Videos</Text>
           </View>
           <Switch
             value={autoplayEnabled}
             onValueChange={setAutoplayEnabled}
-            trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={autoplayEnabled ? "#2196f3" : "#f4f3f4"}
+            trackColor={{ false: "#767577", true: theme.colors.primaryLight }}
+            thumbColor={autoplayEnabled ? theme.colors.primary : "#f4f3f4"}
           />
         </View>
       </View>
@@ -111,17 +101,17 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Support & About</Text>
         <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Share2 size={24} color="#666" />
+            <Share2 size={24} color={theme.colors.text.secondary} />
             <Text style={styles.settingText}>Share App</Text>
           </View>
-          <ChevronRight size={20} color="#666" />
+          <ChevronRight size={20} color={theme.colors.text.secondary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <HelpCircle size={24} color="#666" />
+            <HelpCircle size={24} color={theme.colors.text.secondary} />
             <Text style={styles.settingText}>Help & Support</Text>
           </View>
-          <ChevronRight size={20} color="#666" />
+          <ChevronRight size={20} color={theme.colors.text.secondary} />
         </TouchableOpacity>
       </View>
 
@@ -136,68 +126,70 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.background.primary,
     ...HEADER_PADDING,
   },
   header: {
-    padding: 20,
+    padding: theme.spacing.lg,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 8,
+    fontSize: theme.typography.sizes.xxl,
+    fontWeight: theme.typography.weights.bold,
+    marginBottom: theme.spacing.sm,
+    color: theme.colors.text.primary,
   },
   email: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
   },
   button: {
-    margin: 20,
-    padding: 16,
-    backgroundColor: "#ff4444",
-    borderRadius: 8,
+    margin: theme.spacing.lg,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.status.error,
+    borderRadius: theme.borderRadius.md,
     alignItems: "center",
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.semibold,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   name: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.bold,
+    marginBottom: theme.spacing.xs,
+    color: theme.colors.text.primary,
   },
   section: {
-    padding: 20,
+    padding: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: theme.colors.border.light,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 16,
-    color: "#333",
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    marginBottom: theme.spacing.md,
+    color: theme.colors.text.primary,
   },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.sm,
   },
   settingLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
   settingText: {
-    fontSize: 16,
-    marginLeft: 12,
-    color: "#333",
+    fontSize: theme.typography.sizes.md,
+    marginLeft: theme.spacing.sm,
+    color: theme.colors.text.primary,
   },
 })
