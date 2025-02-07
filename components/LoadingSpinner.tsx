@@ -1,9 +1,10 @@
 import { ActivityIndicator, View, StyleSheet } from "react-native"
+import { theme } from "../constants/theme"
 
 export function LoadingSpinner() {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#007AFF" />
+      <ActivityIndicator size="large" color={theme.colors.primary} />
     </View>
   )
 }

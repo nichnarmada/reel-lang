@@ -44,6 +44,7 @@ import { capitalizeText } from "../../utils/utils"
 import { colorManager } from "../../constants/categoryColors"
 import { generateSingleTopic } from "../../services/topics/singleTopicGenerator"
 import { useSavedTopics } from "../../hooks/useSavedTopics"
+import { theme } from "../../constants/theme"
 const WINDOW_WIDTH = Dimensions.get("window").width
 
 interface TopicDetailsParams {
@@ -516,6 +517,14 @@ export default function TopicDetailsScreen() {
             <Text style={styles.startLearningText}>Start Learning</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Loading Overlay */}
+        {generatingTopic && (
+          <View style={styles.loadingOverlay}>
+            <LoadingSpinner />
+            <Text style={styles.loadingText}>Loading {generatingTopic}...</Text>
+          </View>
+        )}
       </View>
 
       {/* Duration Selection Modal */}
@@ -836,11 +845,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#666",
-  },
   backButtonText: {
     color: "#fff",
     fontSize: 16,
@@ -928,5 +932,22 @@ const styles = StyleSheet.create({
   favoriteButton: {
     padding: 8,
     marginLeft: 8,
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    fontWeight: "500",
   },
 })
