@@ -10,6 +10,8 @@
 - [x] As a learner, I want to see how much time is left in my session
 - [ ] As a learner, I want to take a quiz after my session ends
 - [x] As a learner, I want to track my learning history by topic
+- [x] As a learner, I want AI to suggest specific topics based on my search
+- [x] As a learner, I want to see topic suggestions in an interactive modal
 
 ### Additional Features
 
@@ -23,6 +25,7 @@
 - [x] As a learner, I want clear feedback when content is loading
 - [x] As a learner, I want consistent visual styling when navigating between topics
 - [x] As a learner, I want smooth transitions between different topics
+- [x] As a learner, I want AI to understand my topic interests and suggest relevant content
 
 ## Week 2
 
@@ -31,7 +34,6 @@
 - [x] As a learner, I want AI-generated topic suggestions based on my interests
 - [ ] As a learner, I want personalized topic suggestions
 - [ ] As a learner, I want to see my knowledge gaps in topics
-- [ ] As a learner, I want difficulty-appropriate content
 - [ ] As a learner, I want topic mastery tracking
 - [ ] As a learner, I want learning path recommendations
 
@@ -61,16 +63,16 @@
 ### Personalized Learning Features
 
 - As a learner, I want to receive AI-powered recommendations for my learning journey
-- As a learner, I want suggestions for my optimal learning pace
+- As a learner, I want suggestions tailored to my interests
 - As a learner, I want to understand how topics align with my interests
 - As a learner, I want recommendations tailored to my learning style
 
 ### Smart Session Features
 
-- As a learner, I want AI to suggest the best session length for each topic
+- As a learner, I want AI to suggest optimal session lengths
 - As a learner, I want to know the best times for me to learn
 - As a learner, I want help spacing out my learning sessions effectively
-- As a learner, I want structured session plans optimized for my learning
+- As a learner, I want structured session plans
 
 ### Achievement Features
 
@@ -84,5 +86,5 @@
 
 - As a learner, I want content summaries after sessions
 - As a learner, I want cross-topic connections identified
-- As a learner, I want personalized session length recommendations
+- As a learner, I want personalized session recommendations
 - As a learner, I want performance insights across topics
