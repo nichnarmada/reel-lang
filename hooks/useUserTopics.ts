@@ -79,15 +79,17 @@ export const useUserTopics = (): UseUserTopicsResult => {
             topicStats[topicId] = {
               totalSessions: 0,
               totalTimeSpent: 0,
-              lastSessionDate: session.startTime,
+              lastSessionDate: session.startTime || Timestamp.now(),
             }
           }
 
           topicStats[topicId].totalSessions++
-          topicStats[topicId].totalTimeSpent += session.duration
+          topicStats[topicId].totalTimeSpent += session.duration || 0
           if (
-            session.startTime.toMillis() >
-            topicStats[topicId].lastSessionDate.toMillis()
+            session.startTime &&
+            (!topicStats[topicId].lastSessionDate ||
+              session.startTime.toMillis() >
+                topicStats[topicId].lastSessionDate.toMillis())
           ) {
             topicStats[topicId].lastSessionDate = session.startTime
           }

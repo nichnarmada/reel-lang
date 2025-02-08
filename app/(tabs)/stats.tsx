@@ -19,6 +19,8 @@ import {
   BookOpen,
   Calendar,
   TrendingUp,
+  Flame,
+  Timer,
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
@@ -31,9 +33,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window")
 
 export default function StatsScreen() {
   const { user } = useAuth()
-  const { topics, loading: topicsLoading, error: topicsError } = useUserTopics()
+  // Temporarily disable topics loading until stats logic is fully implemented
+  // const { topics, loading: topicsLoading, error: topicsError } = useUserTopics()
+  const [loading, setLoading] = React.useState(false)
 
-  if (topicsLoading) {
+  if (loading) {
     return (
       <View style={styles.centerContainer}>
         <LoadingSpinner />
@@ -42,29 +46,72 @@ export default function StatsScreen() {
     )
   }
 
-  if (topicsError) {
-    return (
-      <View style={styles.centerContainer}>
-        <ErrorMessage message={topicsError} />
-      </View>
-    )
+  // Static data for now
+  const stats = {
+    totalTimeSpent: 120,
+    totalSessions: 8,
+    activeTopics: 3,
+    achievements: 4,
   }
 
-  // Calculate total time and sessions from topics
-  const totalTimeSpent = Object.values(topics).reduce(
-    (acc, topic) => acc + topic.stats.totalTimeSpent,
-    0
-  )
-  const totalSessions = Object.values(topics).reduce(
-    (acc, topic) => acc + topic.stats.totalSessions,
-    0
-  )
-  const activeTopics = Object.keys(topics).length
+  const sampleTopics = [
+    {
+      id: "1",
+      name: "Machine Learning",
+      emoji: "🤖",
+      stats: {
+        totalTimeSpent: 45,
+        lastStudied: "Apr 15",
+      },
+    },
+    {
+      id: "2",
+      name: "Web Development",
+      emoji: "🌐",
+      stats: {
+        totalTimeSpent: 35,
+        lastStudied: "Apr 14",
+      },
+    },
+    {
+      id: "3",
+      name: "Data Science",
+      emoji: "📊",
+      stats: {
+        totalTimeSpent: 40,
+        lastStudied: "Apr 13",
+      },
+    },
+  ]
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Statistics</Text>
+      </View>
+
+      {/* Today's Progress */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Today's Progress</Text>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressItem}>
+            <Flame size={24} color={theme.colors.primary} />
+            <Text style={styles.progressValue}>3</Text>
+            <Text style={styles.progressLabel}>Day Streak</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.progressItem}>
+            <Timer size={24} color={theme.colors.primary} />
+            <Text style={styles.progressValue}>25m</Text>
+            <Text style={styles.progressLabel}>Today's Time</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.progressItem}>
+            <Target size={24} color={theme.colors.primary} />
+            <Text style={styles.progressValue}>30m</Text>
+            <Text style={styles.progressLabel}>Daily Goal</Text>
+          </View>
+        </View>
       </View>
 
       {/* Overall Stats */}
@@ -73,22 +120,22 @@ export default function StatsScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Clock size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{totalTimeSpent}m</Text>
+            <Text style={styles.statValue}>{stats.totalTimeSpent}m</Text>
             <Text style={styles.statLabel}>Total Time</Text>
           </View>
           <View style={styles.statCard}>
             <Target size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{totalSessions}</Text>
+            <Text style={styles.statValue}>{stats.totalSessions}</Text>
             <Text style={styles.statLabel}>Sessions</Text>
           </View>
           <View style={styles.statCard}>
             <BookOpen size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{activeTopics}</Text>
+            <Text style={styles.statValue}>{stats.activeTopics}</Text>
             <Text style={styles.statLabel}>Topics</Text>
           </View>
           <View style={styles.statCard}>
             <Trophy size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>4</Text>
+            <Text style={styles.statValue}>{stats.achievements}</Text>
             <Text style={styles.statLabel}>Achievements</Text>
           </View>
         </View>
@@ -138,13 +185,11 @@ export default function StatsScreen() {
         </View>
 
         <View style={styles.topicList}>
-          {Object.entries(topics).map(([topicId, topic]) => (
-            <View key={topicId} style={styles.topicCard}>
+          {sampleTopics.map((topic) => (
+            <View key={topic.id} style={styles.topicCard}>
               <View style={styles.topicHeader}>
                 <View style={styles.topicInfo}>
-                  {topic.emoji && (
-                    <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-                  )}
+                  <Text style={styles.topicEmoji}>{topic.emoji}</Text>
                   <Text style={styles.topicName}>{topic.name}</Text>
                 </View>
                 <View style={styles.topicStats}>
@@ -156,11 +201,7 @@ export default function StatsScreen() {
               </View>
               <View style={styles.topicFooter}>
                 <Text style={styles.lastStudied}>
-                  Last studied:{" "}
-                  {format(
-                    new Date(topic.stats.lastSessionDate.seconds * 1000),
-                    "MMM d"
-                  )}
+                  Last studied: {topic.stats.lastStudied}
                 </Text>
               </View>
             </View>
@@ -357,5 +398,33 @@ const styles = StyleSheet.create({
   lastStudied: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.text.secondary,
+  },
+  progressContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: theme.spacing.md,
+  },
+  progressItem: {
+    flex: 1,
+    alignItems: "center",
+    padding: theme.spacing.sm,
+  },
+  progressValue: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginTop: theme.spacing.sm,
+  },
+  progressLabel: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xs,
+    textAlign: "center",
+  },
+  divider: {
+    width: 1,
+    height: "60%",
+    backgroundColor: theme.colors.border.light,
   },
 })

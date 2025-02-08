@@ -88,7 +88,7 @@ export const useTopicSuggestions = (
         userId,
         preferredCategories: preferences.preferredCategories,
         exploredTopics: [],
-        topicNumber: 3,
+        topicNumber: 5,
       })
 
       const newErrors: Record<string, string> = {}
