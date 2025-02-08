@@ -13,6 +13,7 @@ import { useAuth } from "../contexts/auth"
 import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../hooks/useUserPreferences"
 import { ErrorMessage } from "../components/ErrorMessage"
+import { theme } from "../constants/theme"
 
 const minimumCategories = 3
 
@@ -212,52 +213,45 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   categoryText: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
   },
   continueButton: {
-    backgroundColor: "#8a2be2",
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xxl,
+    borderRadius: theme.borderRadius.lg,
     minWidth: 200,
     alignItems: "center",
   },
   continueButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.semibold,
     textAlign: "center",
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: theme.spacing.xl,
   },
   messageText: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
     textAlign: "center",
   },
   errorContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: theme.spacing.xl,
+    marginBottom: theme.spacing.xl,
   },
   floatingButtonContainer: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? 34 : 24,
-    left: 16,
-    right: 16,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    bottom: Platform.OS === "ios" ? 34 : theme.spacing.xl,
+    left: theme.spacing.md,
+    right: theme.spacing.md,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.xl,
+    ...theme.shadows.medium,
   },
 })

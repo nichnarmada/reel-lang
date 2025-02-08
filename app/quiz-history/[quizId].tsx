@@ -14,6 +14,7 @@ import { getDocument, FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
 import { Quiz, Question, UserResponse } from "../../types/quiz"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
+import { theme } from "../../constants/theme"
 
 type QuizWithTopic = Quiz & {
   topicName: string
@@ -270,75 +271,75 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   questionsContainer: {
-    padding: 16,
+    padding: theme.spacing.md,
   },
   questionContainer: {
-    marginBottom: 24,
-    padding: 16,
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    marginBottom: theme.spacing.xl,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: "#f0f0f0",
+    borderColor: theme.colors.border.light,
   },
   questionNumber: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
   },
   questionText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#000",
-    marginBottom: 16,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
   },
   optionsContainer: {
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   optionItem: {
-    padding: 12,
-    borderRadius: 8,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: theme.colors.border.medium,
   },
   optionText: {
-    fontSize: 14,
-    color: "#333",
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.primary,
   },
   correctSelected: {
-    backgroundColor: "#4CAF5015",
-    borderColor: "#4CAF50",
+    backgroundColor: `${theme.colors.status.success}15`,
+    borderColor: theme.colors.status.success,
   },
   incorrectSelected: {
-    backgroundColor: "#FF572215",
-    borderColor: "#FF5722",
+    backgroundColor: `${theme.colors.status.error}15`,
+    borderColor: theme.colors.status.error,
   },
   correctAnswer: {
-    backgroundColor: "#4CAF5015",
-    borderColor: "#4CAF50",
+    backgroundColor: `${theme.colors.status.success}15`,
+    borderColor: theme.colors.status.success,
   },
   correctSelectedText: {
-    color: "#4CAF50",
-    fontWeight: "500",
+    color: theme.colors.status.success,
+    fontWeight: theme.typography.weights.medium,
   },
   incorrectSelectedText: {
-    color: "#FF5722",
-    fontWeight: "500",
+    color: theme.colors.status.error,
+    fontWeight: theme.typography.weights.medium,
   },
   correctAnswerText: {
-    color: "#4CAF50",
-    fontWeight: "500",
+    color: theme.colors.status.success,
+    fontWeight: theme.typography.weights.medium,
   },
   explanationContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.md,
   },
   explanationLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#666",
-    marginBottom: 4,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
   },
   explanationText: {
     fontSize: 14,

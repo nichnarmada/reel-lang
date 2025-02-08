@@ -15,6 +15,7 @@ import { useSavedVideos } from "../hooks/useSavedVideos"
 import { LoadingSpinner } from "../components/LoadingSpinner"
 import { ErrorMessage } from "../components/ErrorMessage"
 import { SavedVideo } from "../types/user"
+import { theme } from "../constants/theme"
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
 const COLUMN_COUNT = 3
@@ -187,47 +188,47 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: theme.spacing.xl,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#666",
+    marginTop: theme.spacing.md,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: theme.spacing.xl,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 8,
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
   },
   emptySubtext: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
     textAlign: "center",
   },
   topicBadgeContainer: {
     position: "absolute",
-    bottom: 8,
-    left: 8,
-    right: 8,
+    bottom: theme.spacing.sm,
+    left: theme.spacing.sm,
+    right: theme.spacing.sm,
     flexDirection: "row",
   },
   topicBadge: {
     backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
     maxWidth: "100%",
   },
   topicText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "500",
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.sizes.xs,
+    fontWeight: theme.typography.weights.medium,
   },
 })
