@@ -23,6 +23,8 @@ export const theme = {
     border: {
       light: "#F0F0F0",
       medium: "#E0E0E0",
+      dark: "#C0C0C0",
+      darker: "#A0A0A0",
     },
 
     // Status colors

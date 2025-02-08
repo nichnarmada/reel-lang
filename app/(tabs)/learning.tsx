@@ -20,6 +20,7 @@ import {
   Bookmark,
   Star,
   Pause,
+  History,
 } from "lucide-react-native"
 import { router } from "expo-router"
 import { theme } from "../../constants/theme"
@@ -27,6 +28,7 @@ import { useSavedTopics } from "../../hooks/useSavedTopics"
 import { useLearningSession } from "../../hooks/useLearningSession"
 import { format } from "date-fns"
 import { Session } from "../../types/session"
+import { MenuDrawer } from "../../components/menu-drawer"
 
 export default function LearningScreen() {
   const { user } = useAuth()
@@ -99,7 +101,31 @@ export default function LearningScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Learning Journey</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Learning Journey</Text>
+          <MenuDrawer
+            items={[
+              {
+                id: "quiz-history",
+                label: "Quiz History",
+                icon: History,
+                onPress: () => router.push("/quiz-history"),
+              },
+              {
+                id: "favorite-topics",
+                label: "Favorite Topics",
+                icon: Star,
+                onPress: () => router.push("/saved-topics"),
+              },
+              {
+                id: "saved-videos",
+                label: "Saved Videos",
+                icon: Bookmark,
+                onPress: () => router.push("/saved-videos"),
+              },
+            ]}
+          />
+        </View>
       </View>
 
       {/* Active Sessions Section */}
@@ -107,22 +133,6 @@ export default function LearningScreen() {
         <View style={styles.sectionHeader}>
           <View style={styles.titleContainer}>
             <Text style={styles.sectionTitle}>Continue Learning</Text>
-          </View>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={styles.savedButton}
-              onPress={() => router.push("/saved-topics")}
-            >
-              <Star size={20} color={theme.colors.primary} />
-              <Text style={styles.savedButtonText}>Topics</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.savedButton}
-              onPress={() => router.push("/saved-videos")}
-            >
-              <Bookmark size={20} color={theme.colors.primary} />
-              <Text style={styles.savedButtonText}>Videos</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -277,14 +287,18 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border.light,
+  },
+  headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
   },
   title: {
     fontSize: theme.typography.sizes.xxl,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text.primary,
+    flex: 1,
   },
   section: {
     padding: theme.spacing.md,
