@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ViewToken,
   Alert,
+  BackHandler,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
 import { LAYOUT } from "../../../constants/layout"
@@ -31,6 +32,7 @@ import {
 import { useAuth } from "../../../contexts/auth"
 import { SAMPLE_QUESTIONS } from "../../../constants/quiz"
 import { Timestamp } from "@react-native-firebase/firestore"
+import { useLearningSession } from "../../../hooks/useLearningSession"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT
@@ -44,13 +46,116 @@ type VideoItem = {
 }
 
 export default function ReelsScreen() {
-  const { topicId, topicName, duration, sessionId } = useLocalSearchParams()
+  const {
+    topicId,
+    topicName,
+    duration,
+    sessionId,
+    isResumed,
+    lastVideoId,
+    lastVideoTimestamp,
+  } = useLocalSearchParams()
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null)
+  const [currentVideoTime, setCurrentVideoTime] = useState(
+    lastVideoTimestamp ? Number(lastVideoTimestamp) : 0
+  )
+  const [videosWatched, setVideosWatched] = useState(0)
   const flatListRef = useRef<FlatList>(null)
+  const initialScrollDone = useRef(false)
   const { user } = useAuth()
+  const { pauseSession } = useLearningSession(user?.uid || "")
+
+  // Handle back button and screen exit
+  const handleExit = useCallback(async () => {
+    const currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
+    const timeSpentSeconds = Math.floor((Date.now() - sessionStartTime) / 1000)
+    const remainingTimeSeconds = Number(duration) * 60 - timeSpentSeconds
+
+    return new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Leave Session?",
+        "Your progress will be saved and you can resume later. Would you like to leave?",
+        [
+          {
+            text: "Stay",
+            style: "cancel",
+            onPress: () => resolve(false),
+          },
+          {
+            text: "Leave",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                // Save session progress before leaving
+                await pauseSession(currentSessionId, {
+                  lastVideoId: visibleVideoId || undefined,
+                  lastVideoTimestamp: currentVideoTime,
+                  timeSpentSeconds,
+                  videosWatched,
+                  remainingTimeSeconds: Math.max(0, remainingTimeSeconds),
+                })
+                resolve(true)
+                router.back()
+              } catch (error) {
+                console.error("Error saving session progress:", error)
+                Alert.alert(
+                  "Error",
+                  "Failed to save your progress. Please try again."
+                )
+                resolve(false)
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      )
+    })
+  }, [
+    sessionId,
+    duration,
+    visibleVideoId,
+    currentVideoTime,
+    videosWatched,
+    pauseSession,
+  ])
+
+  // Track session start time
+  const [sessionStartTime] = useState(Date.now())
+
+  // Handle hardware back button (Android)
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        handleExit()
+        return true // Prevent default behavior while we handle the exit
+      }
+    )
+
+    return () => backHandler.remove()
+  }, [handleExit])
+
+  // Update the back button to use handleExit
+  const renderBackButton = () => (
+    <TouchableOpacity style={styles.backButton} onPress={handleExit}>
+      <ChevronLeft size={24} color="#fff" />
+    </TouchableOpacity>
+  )
+
+  // Add video progress tracking
+  const handleVideoProgress = useCallback(
+    (progress: { currentTime: number }) => {
+      setCurrentVideoTime(progress.currentTime)
+    },
+    []
+  )
+
+  const handleVideoEnd = useCallback(() => {
+    setVideosWatched((prev) => prev + 1)
+  }, [])
 
   const handleSessionEnd = useCallback(async () => {
     if (!user) return
@@ -146,8 +251,33 @@ export default function ReelsScreen() {
           })
         )
         setVideos(formattedVideos)
+
+        // Set initial visible video
         if (formattedVideos.length > 0) {
-          setVisibleVideoId(formattedVideos[0].id)
+          if (isResumed === "true" && lastVideoId) {
+            const resumeVideoId = Array.isArray(lastVideoId)
+              ? lastVideoId[0]
+              : lastVideoId
+            setVisibleVideoId(resumeVideoId)
+            // Find the index of the last watched video
+            const lastVideoIndex = formattedVideos.findIndex(
+              (v) => v.id === resumeVideoId
+            )
+            if (
+              lastVideoIndex !== -1 &&
+              flatListRef.current &&
+              !initialScrollDone.current
+            ) {
+              // Scroll to the last watched video
+              flatListRef.current.scrollToIndex({
+                index: lastVideoIndex,
+                animated: false,
+              })
+              initialScrollDone.current = true
+            }
+          } else {
+            setVisibleVideoId(formattedVideos[0].id)
+          }
         }
       } catch (err) {
         console.error("Error loading videos:", err)
@@ -158,7 +288,7 @@ export default function ReelsScreen() {
     }
 
     loadVideos()
-  }, [topicName])
+  }, [topicName, isResumed, lastVideoId])
 
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 50,
@@ -172,40 +302,6 @@ export default function ReelsScreen() {
       }
     },
     [topicId, topicName, sessionId]
-  )
-
-  const renderItem = useCallback(
-    ({ item }: { item: VideoItem }) => (
-      <View style={styles.videoContainer}>
-        <VideoPlayer
-          uri={item.uri}
-          paused={item.id !== visibleVideoId}
-          repeat={true}
-          onError={(error) => console.error(`Video ${item.id} error:`, error)}
-          onLike={() => console.log("Liked video:", item.id)}
-          onDislike={() => console.log("Disliked video:", item.id)}
-          videoInfo={{
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            thumbnail: item.thumbnail,
-            duration: "3:00", // Placeholder duration
-            topicId: Array.isArray(topicId) ? topicId[0] : topicId,
-            topicName: Array.isArray(topicName) ? topicName[0] : topicName,
-          }}
-        />
-        <View style={styles.overlay}>
-          <View style={styles.videoInfo}>
-            <Text style={styles.videoTitle}>{item.title}</Text>
-            <Text style={styles.videoDescription}>{item.description}</Text>
-            <View style={styles.topicBadge}>
-              <Text style={styles.topicText}>{topicName}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    ),
-    [visibleVideoId, topicName]
   )
 
   if (loading) {
@@ -233,12 +329,7 @@ export default function ReelsScreen() {
         }}
       />
       <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} color="#fff" />
-        </TouchableOpacity>
+        {renderBackButton()}
 
         <View style={styles.timerContainer}>
           <SessionTimer
@@ -250,7 +341,44 @@ export default function ReelsScreen() {
         <FlatList
           ref={flatListRef}
           data={videos}
-          renderItem={renderItem}
+          renderItem={({ item }) => (
+            <View style={styles.videoContainer}>
+              <VideoPlayer
+                uri={item.uri}
+                paused={item.id !== visibleVideoId}
+                repeat={true}
+                onError={(error) =>
+                  console.error(`Video ${item.id} error:`, error)
+                }
+                onLike={() => console.log("Liked video:", item.id)}
+                onDislike={() => console.log("Disliked video:", item.id)}
+                onProgress={handleVideoProgress}
+                onEnd={handleVideoEnd}
+                videoInfo={{
+                  id: item.id,
+                  title: item.title,
+                  description: item.description,
+                  thumbnail: item.thumbnail,
+                  duration: "3:00", // Placeholder duration
+                  topicId: Array.isArray(topicId) ? topicId[0] : topicId,
+                  topicName: Array.isArray(topicName)
+                    ? topicName[0]
+                    : topicName,
+                }}
+              />
+              <View style={styles.overlay}>
+                <View style={styles.videoInfo}>
+                  <Text style={styles.videoTitle}>{item.title}</Text>
+                  <Text style={styles.videoDescription}>
+                    {item.description}
+                  </Text>
+                  <View style={styles.topicBadge}>
+                    <Text style={styles.topicText}>{topicName}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
           keyExtractor={(item) => item.id}
           pagingEnabled
           showsVerticalScrollIndicator={false}

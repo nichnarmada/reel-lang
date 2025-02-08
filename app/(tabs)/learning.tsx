@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   Platform,
 } from "react-native"
 import { useAuth } from "../../contexts/auth"
@@ -21,34 +20,22 @@ import {
   Bookmark,
   Star,
   Pause,
-  RotateCw,
 } from "lucide-react-native"
 import { router } from "expo-router"
 import { theme } from "../../constants/theme"
 import { useSavedTopics } from "../../hooks/useSavedTopics"
 import { useLearningSession } from "../../hooks/useLearningSession"
 import { format } from "date-fns"
-import { LearningSession } from "../../types/session"
+import { Session } from "../../types/session"
 
 export default function LearningScreen() {
   const { user } = useAuth()
-  const [refreshing, setRefreshing] = React.useState(false)
   const {
     sessions,
     loading: loadingSessions,
     error: sessionsError,
     resumeSession,
-    fetchSessions,
   } = useLearningSession(user?.uid || "")
-
-  const onRefresh = React.useCallback(async () => {
-    setRefreshing(true)
-    try {
-      await fetchSessions()
-    } finally {
-      setRefreshing(false)
-    }
-  }, [fetchSessions])
 
   const handleResumeSession = async (sessionId: string) => {
     try {
@@ -62,8 +49,12 @@ export default function LearningScreen() {
             id: session.topicId,
             topicId: session.topicId,
             topicName: session.topicName,
-            duration: session.duration?.toString() || "5",
+            // Use remaining time from progress if available, otherwise use original duration
+            duration: session.progress?.remainingTimeSeconds
+              ? (session.progress.remainingTimeSeconds / 60).toString()
+              : session.duration?.toString() || "5",
             sessionId: session.id,
+            isResumed: "true", // Flag to indicate this is a resumed session
             lastVideoId: session.progress?.lastVideoId,
             lastVideoTimestamp:
               session.progress?.lastVideoTimestamp?.toString(),
@@ -106,32 +97,9 @@ export default function LearningScreen() {
   const pausedSessions = sessions.filter((s) => s.status === "paused")
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={theme.colors.primary}
-        />
-      }
-    >
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Learning Journey</Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={onRefresh}
-          disabled={refreshing || loadingSessions}
-        >
-          <RotateCw
-            size={20}
-            color={theme.colors.primary}
-            style={[
-              styles.refreshIcon,
-              (refreshing || loadingSessions) && styles.rotating,
-            ]}
-          />
-        </TouchableOpacity>
       </View>
 
       {/* Active Sessions Section */}
@@ -164,11 +132,6 @@ export default function LearningScreen() {
               <View key={session.id} style={styles.sessionCard}>
                 <View style={styles.sessionHeader}>
                   <View style={styles.sessionInfo}>
-                    {session.topicEmoji && (
-                      <Text style={styles.topicEmoji}>
-                        {session.topicEmoji}
-                      </Text>
-                    )}
                     <Text style={styles.topicName}>{session.topicName}</Text>
                   </View>
                   <View style={styles.sessionBadge}>
@@ -177,22 +140,6 @@ export default function LearningScreen() {
                       {session.duration
                         ? `${session.duration}min`
                         : "No time limit"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.sessionStats}>
-                  <View style={styles.statItem}>
-                    <Clock size={14} color={theme.colors.text.secondary} />
-                    <Text style={styles.statText}>
-                      {session.progress?.timeSpent ?? 0}min spent
-                    </Text>
-                  </View>
-                  <Text style={styles.statDivider}>•</Text>
-                  <View style={styles.statItem}>
-                    <Play size={14} color={theme.colors.text.secondary} />
-                    <Text style={styles.statText}>
-                      {session.progress?.videosWatched ?? 0} videos
                     </Text>
                   </View>
                 </View>
@@ -214,45 +161,45 @@ export default function LearningScreen() {
                   <View key={session.id} style={styles.sessionCard}>
                     <View style={styles.sessionHeader}>
                       <View style={styles.sessionInfo}>
-                        {session.topicEmoji && (
-                          <Text style={styles.topicEmoji}>
-                            {session.topicEmoji}
-                          </Text>
-                        )}
                         <Text style={styles.topicName}>
                           {session.topicName}
                         </Text>
+                        {session.progress && (
+                          <View style={styles.progressInfo}>
+                            <View style={styles.progressBadge}>
+                              <Timer
+                                size={14}
+                                color={theme.colors.text.secondary}
+                              />
+                              <Text style={styles.progressText}>
+                                {Math.floor(
+                                  session.progress.remainingTimeSeconds / 60
+                                )}
+                                m{" "}
+                                {Math.floor(
+                                  session.progress.remainingTimeSeconds % 60
+                                )}
+                                s left
+                              </Text>
+                            </View>
+                            {session.progress.videosWatched > 0 && (
+                              <View style={styles.progressBadge}>
+                                <Play
+                                  size={14}
+                                  color={theme.colors.text.secondary}
+                                />
+                                <Text style={styles.progressText}>
+                                  {session.progress.videosWatched} videos
+                                  watched
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
                       </View>
                       <View style={styles.sessionBadge}>
-                        <Timer size={14} color={theme.colors.text.secondary} />
-                        <Text style={styles.sessionBadgeText}>
-                          {session.duration
-                            ? `${session.duration}min`
-                            : "No time limit"}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.sessionStats}>
-                      <View style={styles.statItem}>
-                        <Clock size={14} color={theme.colors.text.secondary} />
-                        <Text style={styles.statText}>
-                          {session.progress?.timeSpent ?? 0}min spent
-                        </Text>
-                      </View>
-                      <Text style={styles.statDivider}>•</Text>
-                      <View style={styles.statItem}>
-                        <Play size={14} color={theme.colors.text.secondary} />
-                        <Text style={styles.statText}>
-                          {session.progress?.videosWatched ?? 0} videos
-                        </Text>
-                      </View>
-                      <Text style={styles.statDivider}>•</Text>
-                      <View style={styles.statItem}>
                         <Pause size={14} color={theme.colors.text.secondary} />
-                        <Text style={styles.statText}>
-                          Paused {format(session.pausedAt!, "MMM d")}
-                        </Text>
+                        <Text style={styles.sessionBadgeText}>Paused</Text>
                       </View>
                     </View>
 
@@ -444,12 +391,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   sessionInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.sm,
-  },
-  topicEmoji: {
-    fontSize: theme.typography.sizes.xl,
+    flex: 1,
   },
   topicName: {
     fontSize: theme.typography.sizes.md,
@@ -469,24 +411,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.text.secondary,
   },
-  sessionStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: theme.spacing.md,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.xs,
-  },
-  statText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
-  },
-  statDivider: {
-    marginHorizontal: theme.spacing.sm,
-    color: theme.colors.text.secondary,
-  },
   resumeButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -502,14 +426,23 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.medium,
     color: theme.colors.primary,
   },
-  refreshButton: {
-    padding: 8,
-    borderRadius: 20,
+  progressInfo: {
+    flexDirection: "column",
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
   },
-  refreshIcon: {
-    opacity: 0.8,
+  progressBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.background.secondary,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+    alignSelf: "flex-start",
   },
-  rotating: {
-    opacity: 0.5,
+  progressText: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
   },
 })
