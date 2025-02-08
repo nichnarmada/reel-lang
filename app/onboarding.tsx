@@ -14,6 +14,8 @@ import { allCategories } from "@/constants/topics"
 import { useUserPreferences } from "../hooks/useUserPreferences"
 import { ErrorMessage } from "../components/ErrorMessage"
 
+const minimumCategories = 3
+
 export default function OnboardingScreen() {
   const { user, hasCompletedOnboarding, setOnboardingComplete } = useAuth()
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
@@ -38,7 +40,7 @@ export default function OnboardingScreen() {
   }
 
   const handleContinue = async () => {
-    if (!user || selectedCategories.length < 3) return
+    if (!user || selectedCategories.length < minimumCategories) return
 
     try {
       await saveOnboardingSelections(selectedCategories)
@@ -58,86 +60,93 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-    >
-      <View style={styles.mainContent}>
-        {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Welcome to TimedTutor!</Text>
-          <Text style={styles.headerSubtitle}>
-            Select topics you're interested in learning about. Choose at least 3
-            to get started.
-          </Text>
-        </View>
-
-        {error && (
-          <View style={styles.errorContainer}>
-            <ErrorMessage message={error} />
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <View style={styles.mainContent}>
+          {/* Header Section */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Welcome to TimedTutor!</Text>
+            <Text style={styles.headerSubtitle}>
+              Select topics you're interested in learning about. Choose at least
+              {minimumCategories} to get started.
+            </Text>
           </View>
-        )}
 
-        {/* Categories Grid */}
-        <View style={styles.categoriesContainer}>
-          {allCategories.map((topic) => (
-            <TouchableOpacity
-              key={topic.id}
-              style={[
-                styles.categoryBadge,
-                {
-                  backgroundColor: selectedCategories.includes(topic.id)
-                    ? topic.color
-                    : topic.color + "15",
-                },
-              ]}
-              onPress={() => handleCategorySelect(topic.id)}
-              disabled={loading}
-            >
-              <topic.icon
-                size={24}
-                color={
-                  selectedCategories.includes(topic.id) ? "#fff" : topic.color
-                }
-                style={styles.categoryIcon}
-              />
-              <Text
+          {error && (
+            <View style={styles.errorContainer}>
+              <ErrorMessage message={error} />
+            </View>
+          )}
+
+          {/* Categories Grid */}
+          <View style={styles.categoriesContainer}>
+            {allCategories.map((topic) => (
+              <TouchableOpacity
+                key={topic.id}
                 style={[
-                  styles.categoryText,
+                  styles.categoryBadge,
                   {
-                    color: selectedCategories.includes(topic.id)
-                      ? "#fff"
-                      : topic.color,
+                    backgroundColor: selectedCategories.includes(topic.id)
+                      ? topic.color
+                      : topic.color + "15",
                   },
                 ]}
+                onPress={() => handleCategorySelect(topic.id)}
+                disabled={loading}
               >
-                {topic.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <topic.icon
+                  size={24}
+                  color={
+                    selectedCategories.includes(topic.id) ? "#fff" : topic.color
+                  }
+                  style={styles.categoryIcon}
+                />
+                <Text
+                  style={[
+                    styles.categoryText,
+                    {
+                      color: selectedCategories.includes(topic.id)
+                        ? "#fff"
+                        : topic.color,
+                    },
+                  ]}
+                >
+                  {topic.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
+      </ScrollView>
 
-        {/* Continue Button */}
+      {/* Floating Continue Button */}
+      <View style={styles.floatingButtonContainer}>
         <TouchableOpacity
           style={[
             styles.continueButton,
             {
-              opacity: selectedCategories.length >= 3 && !loading ? 1 : 0.5,
+              opacity:
+                selectedCategories.length >= minimumCategories && !loading
+                  ? 1
+                  : 0.5,
             },
           ]}
           onPress={handleContinue}
-          disabled={selectedCategories.length < 3 || loading}
+          disabled={selectedCategories.length < minimumCategories || loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.continueButtonText}>
-              Continue ({selectedCategories.length}/3)
+              Continue ({selectedCategories.length}/{minimumCategories})
             </Text>
           )}
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </>
   )
 }
 
@@ -153,7 +162,7 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     justifyContent: "center",
-    paddingTop: Platform.OS === "ios" ? 60 : 20,
+    paddingTop: Platform.OS === "ios" ? 100 : 60,
     paddingBottom: 32,
   },
   header: {
@@ -182,6 +191,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     paddingHorizontal: 16,
+    paddingBottom: Platform.OS === "ios" ? 80 : 90,
     maxWidth: 600,
     alignSelf: "center",
   },
@@ -210,14 +220,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,
-    alignSelf: "center",
-    marginTop: 40,
     minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    alignItems: "center",
   },
   continueButtonText: {
     color: "#fff",
@@ -239,5 +243,21 @@ const styles = StyleSheet.create({
   errorContainer: {
     paddingHorizontal: 20,
     marginBottom: 20,
+  },
+  floatingButtonContainer: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 34 : 24,
+    left: 16,
+    right: 16,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
 })
