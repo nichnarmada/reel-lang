@@ -25,16 +25,24 @@
   - [x] Add session timer and progress display
   - [x] Create video interaction controls (play, pause, save)
 
-- [ ] User Preferences
+- [x] Session Management
 
-  - [ ] Build user profile management
+  - [x] Implement pause/resume functionality
+  - [x] Add accurate time tracking (in seconds)
+  - [x] Create progress persistence system
+  - [x] Add real-time session updates
+  - [x] Handle session state transitions
+
+- [x] User Preferences
+
+  - [x] Build user profile management
   - [x] Implement topic interest selection
   - [x] Add session length customization
 
-- [ ] Basic Features
+- [x] Basic Features
 
   - [x] Implement video bookmarking
-  - [ ] Add basic progress tracking
+  - [x] Add basic progress tracking
   - [x] Create session history view
 
 ### Phase 2: Learning Features (Week 1-2)

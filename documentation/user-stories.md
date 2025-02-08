@@ -8,7 +8,6 @@
 - [x] As a learner, I want to set a timer for my learning session (5/10/15 mins)
 - [x] As a learner, I want to watch topic-filtered short videos continuously
 - [x] As a learner, I want to see how much time is left in my session
-- [ ] As a learner, I want to take a quiz after my session ends
 - [x] As a learner, I want to track my learning history by topic
 - [x] As a learner, I want AI to suggest specific topics based on my search
 - [x] As a learner, I want to see topic suggestions in an interactive modal
@@ -18,7 +17,8 @@
 - [x] As a learner, I want topic suggestions if I'm unsure what to learn
 - [x] As a learner, I want visually appealing topic presentations with emojis and colors
 - [x] As a learner, I want to save videos for later review
-- [x] As a learner, I want to pause my session if needed
+- [x] As a learner, I want to pause my session and resume later with accurate time tracking
+- [x] As a learner, I want to see my remaining session time in minutes and seconds
 - [x] As a learner, I want to discover new topics through AI suggestions
 - [x] As a learner, I want to refresh topic suggestions when I want new ideas
 - [x] As a learner, I want to explore related topics with visual indicators
@@ -26,6 +26,14 @@
 - [x] As a learner, I want consistent visual styling when navigating between topics
 - [x] As a learner, I want smooth transitions between different topics
 - [x] As a learner, I want AI to understand my topic interests and suggest relevant content
+
+### Session Management Features
+
+- [x] As a learner, I want to pause my session and continue later
+- [x] As a learner, I want my progress to be saved when I leave a session
+- [x] As a learner, I want to see how many videos I've watched in a session
+- [x] As a learner, I want to resume from the exact video and timestamp where I left off
+- [x] As a learner, I want to see accurate remaining time when I resume a session
 
 ## Week 2
 
