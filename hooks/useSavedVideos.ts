@@ -46,7 +46,7 @@ export function useSavedVideos() {
                       thumbnail,
                     } as SavedVideo
                   } catch (err) {
-                    console.log("Error fetching thumbnail:", err)
+                    console.error("Error fetching thumbnail:", err)
                     return {
                       id: doc.id,
                       ...data,
@@ -100,7 +100,7 @@ export function useSavedVideos() {
         try {
           thumbnail = await getVideoThumbnail(videoInfo.id)
         } catch (err) {
-          console.log("Error fetching thumbnail:", err)
+          console.error("Error fetching thumbnail:", err)
         }
       }
 
@@ -130,7 +130,7 @@ export function useSavedVideos() {
         }
       } catch (engagementErr) {
         // Ignore engagement update errors - the video might be from an external source
-        console.log(
+        console.error(
           "Skipping engagement update for external video:",
           videoInfo.id
         )
@@ -163,7 +163,7 @@ export function useSavedVideos() {
         }
       } catch (engagementErr) {
         // Ignore engagement update errors - the video might be from an external source
-        console.log("Skipping engagement update for external video:", videoId)
+        console.error("Skipping engagement update for external video:", videoId)
       }
     } catch (err) {
       console.error("Error removing video:", err)

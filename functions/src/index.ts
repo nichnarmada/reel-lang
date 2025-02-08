@@ -199,7 +199,6 @@ export const onQuizComplete = onDocumentWritten(
         sessions_completed: newStats.sessionsCompleted,
       }
 
-      console.log("Learning stats updated:", analyticsData)
       return newStats
     })
   }
