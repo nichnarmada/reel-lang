@@ -170,7 +170,6 @@ export default function VideoPlayer({
 
       if (missingFields.length > 0) {
         console.error("Missing required fields:", missingFields)
-        console.log("Video info:", videoInfo)
         throw new Error(`Missing required fields: ${missingFields.join(", ")}`)
       }
 

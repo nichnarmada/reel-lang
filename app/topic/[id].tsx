@@ -14,7 +14,6 @@ import {
 import { useLocalSearchParams, Stack, router } from "expo-router"
 import { GeneratedTopic, RelatedTopic } from "../../types/topic"
 import { UserGeneratedTopic } from "../../types/user"
-import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
 import {
   ChevronLeft,
@@ -43,6 +42,8 @@ import { colorManager } from "../../constants/categoryColors"
 import { generateSingleTopic } from "../../services/topics/singleTopicGenerator"
 import { useSavedTopics } from "../../hooks/useSavedTopics"
 import { theme } from "../../constants/theme"
+import { LoadingOverlay } from "../../components/LoadingOverlay"
+
 const WINDOW_WIDTH = Dimensions.get("window").width
 
 interface TopicDetailsParams {
@@ -61,7 +62,7 @@ export default function TopicDetailsScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showDurationModal, setShowDurationModal] = useState(false)
-  const [generatingTopic, setGeneratingTopic] = useState<string | null>(null)
+  const [loadingMessage, setLoadingMessage] = useState("Loading topic...")
   const pulseAnim = useRef(new Animated.Value(1)).current
   const starScale = useRef(new Animated.Value(1)).current
   const topicColors = useRef<
@@ -81,9 +82,13 @@ export default function TopicDetailsScreen() {
     "Modern Developments",
   ]
 
+  const [relatedTopicLoading, setRelatedTopicLoading] = useState(false)
+
   useEffect(() => {
     const loadTopic = async () => {
       try {
+        setLoading(true)
+        setLoadingMessage("Loading topic...")
         if (isGenerated) {
           // For generated topics, create topic object from navigation params
           const name = String(params.name)
@@ -162,7 +167,7 @@ export default function TopicDetailsScreen() {
   ])
 
   useEffect(() => {
-    if (generatingTopic) {
+    if (loading) {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -180,7 +185,7 @@ export default function TopicDetailsScreen() {
     } else {
       pulseAnim.setValue(1)
     }
-  }, [generatingTopic])
+  }, [loading])
 
   const handleStartLearning = async (duration: SessionDuration) => {
     if (!topic || !user) return
@@ -254,7 +259,9 @@ export default function TopicDetailsScreen() {
     if (!topic) return
 
     try {
-      // Generate full topic details
+      setLoading(true)
+      setLoadingMessage(`Loading ${relatedTopic.name}...`)
+
       const generatedTopic = await generateSingleTopic(
         relatedTopic.name,
         topic.category,
@@ -270,7 +277,7 @@ export default function TopicDetailsScreen() {
         .toLowerCase()
         .replace(/\s+/g, "-")}`
 
-      // Navigate to topic details
+      // Navigate to the new topic
       router.replace({
         pathname: "/topic/[id]",
         params: {
@@ -286,9 +293,13 @@ export default function TopicDetailsScreen() {
           relatedTopics: JSON.stringify(generatedTopic.relatedTopics),
         },
       })
-    } catch (error) {
-      console.error("Error navigating to related topic:", error)
-      // TODO: Show error to user
+    } catch (err) {
+      console.error("Error navigating to related topic:", err)
+      setError(
+        err instanceof Error ? err.message : "Failed to load related topic"
+      )
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -323,19 +334,25 @@ export default function TopicDetailsScreen() {
     }
   }
 
-  if (loading) {
+  if (error && !loading) {
     return (
       <View style={styles.centerContainer}>
-        <LoadingSpinner />
-        <Text style={styles.loadingText}>Loading topic...</Text>
+        <ErrorMessage message={error || "Topic not found"} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     )
   }
 
-  if (error || !topic) {
+  // Add null check for topic
+  if (!topic && !loading) {
     return (
       <View style={styles.centerContainer}>
-        <ErrorMessage message={error || "Topic not found"} />
+        <ErrorMessage message="Topic not found" />
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -365,10 +382,10 @@ export default function TopicDetailsScreen() {
                 <ChevronLeft size={24} color="#000" />
               </TouchableOpacity>
               <View style={styles.headerTitleContainer}>
-                {"emoji" in topic && topic.emoji && (
+                {topic?.emoji && (
                   <Text style={styles.headerEmoji}>{topic.emoji}</Text>
                 )}
-                <Text style={styles.headerTitle}>{topic.name}</Text>
+                <Text style={styles.headerTitle}>{topic?.name}</Text>
               </View>
               {topic && (
                 <Animated.View
@@ -397,173 +414,186 @@ export default function TopicDetailsScreen() {
             </View>
           </View>
 
-          {/* Overview Section */}
-          <View style={styles.section}>
-            {/* Category Badge */}
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>
-                {capitalizeText(topic.category)}
-              </Text>
-            </View>
+          {/* Only render content if topic exists */}
+          {topic && (
+            <>
+              {/* Overview Section */}
+              <View style={styles.section}>
+                {/* Category Badge */}
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryText}>
+                    {capitalizeText(topic.category)}
+                  </Text>
+                </View>
 
-            {/* Description */}
-            <Text style={styles.description}>{topic.description}</Text>
+                {/* Description */}
+                <Text style={styles.description}>{topic.description}</Text>
 
-            {/* AI Insight Card */}
-            <View style={styles.aiInsightCard}>
-              <View style={styles.aiInsightHeader}>
-                <Sparkles size={20} color="#8a2be2" />
-                <Text style={styles.aiInsightTitle}>
-                  Why This Topic is Great for You
-                </Text>
-              </View>
-              <Text style={styles.aiReason}>{topic.reasonForSuggestion}</Text>
-            </View>
-
-            {/* Difficulty Selection */}
-            {/* <View style={styles.difficultySection}>
-              <Text style={styles.sectionSubtitle}>Select Difficulty</Text>
-              <View style={styles.difficultyContainer}>
-                {topic.availableDifficulties.map((difficulty) => (
-                  <TouchableOpacity
-                    key={difficulty}
-                    style={[
-                      styles.difficultyBadge,
-                      topic.selectedDifficulty === difficulty &&
-                        styles.selectedDifficulty,
-                    ]}
-                    onPress={() => handleDifficultySelect(difficulty)}
-                  >
-                    <Text
-                      style={[
-                        styles.difficultyText,
-                        topic.selectedDifficulty === difficulty &&
-                          styles.selectedDifficultyText,
-                      ]}
-                    >
-                      {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                {/* AI Insight Card */}
+                <View style={styles.aiInsightCard}>
+                  <View style={styles.aiInsightHeader}>
+                    <Sparkles size={20} color="#8a2be2" />
+                    <Text style={styles.aiInsightTitle}>
+                      Why This Topic is Great for You
                     </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View> */}
-          </View>
+                  </View>
+                  <Text style={styles.aiReason}>
+                    {topic.reasonForSuggestion}
+                  </Text>
+                </View>
 
-          {/* Deep Dive Topics */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Related Topics</Text>
-            <View style={styles.relatedTopicsContainer}>
-              {topic.relatedTopics.map((relatedTopic) => {
-                // Memoize colors for each topic
-                if (!topicColors[relatedTopic.name]) {
-                  topicColors[relatedTopic.name] = colorManager.getNextColor()
-                }
-                const colors = topicColors[relatedTopic.name]
-                const isGenerating = generatingTopic === relatedTopic.name
-
-                return (
-                  <TouchableOpacity
-                    key={relatedTopic.name}
-                    disabled={isGenerating}
-                    style={[
-                      styles.relatedTopicButton,
-                      { backgroundColor: colors.background },
-                    ]}
-                    onPress={async () => {
-                      setGeneratingTopic(relatedTopic.name)
-                      try {
-                        await handleRelatedTopicPress(relatedTopic)
-                      } finally {
-                        setGeneratingTopic(null)
-                      }
-                    }}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.relatedTopicContent,
-                        isGenerating && {
-                          opacity: pulseAnim,
-                        },
-                      ]}
-                    >
-                      <Text style={styles.relatedTopicEmoji}>
-                        {relatedTopic.emoji}
-                      </Text>
-                      <Text
+                {/* Difficulty Selection */}
+                {/* <View style={styles.difficultySection}>
+                  <Text style={styles.sectionSubtitle}>Select Difficulty</Text>
+                  <View style={styles.difficultyContainer}>
+                    {topic.availableDifficulties.map((difficulty) => (
+                      <TouchableOpacity
+                        key={difficulty}
                         style={[
-                          styles.relatedTopicText,
-                          { color: colors.text },
+                          styles.difficultyBadge,
+                          topic.selectedDifficulty === difficulty &&
+                            styles.selectedDifficulty,
                         ]}
+                        onPress={() => handleDifficultySelect(difficulty)}
                       >
-                        {capitalizeText(relatedTopic.name)}
-                      </Text>
-                    </Animated.View>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          </View>
+                        <Text
+                          style={[
+                            styles.difficultyText,
+                            topic.selectedDifficulty === difficulty &&
+                              styles.selectedDifficultyText,
+                          ]}
+                        >
+                          {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View> */}
+              </View>
+
+              {/* Deep Dive Topics */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Related Topics</Text>
+                <View style={styles.relatedTopicsContainer}>
+                  {topic.relatedTopics.map((relatedTopic) => {
+                    // Memoize colors for each topic
+                    if (!topicColors[relatedTopic.name]) {
+                      topicColors[relatedTopic.name] =
+                        colorManager.getNextColor()
+                    }
+                    const colors = topicColors[relatedTopic.name]
+
+                    return (
+                      <TouchableOpacity
+                        key={relatedTopic.name}
+                        style={[
+                          styles.relatedTopicButton,
+                          { backgroundColor: colors.background },
+                        ]}
+                        onPress={async () => {
+                          try {
+                            await handleRelatedTopicPress(relatedTopic)
+                          } catch (err) {
+                            console.error(
+                              "Error navigating to related topic:",
+                              err
+                            )
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to load related topic"
+                            )
+                          }
+                        }}
+                      >
+                        <Animated.View style={[styles.relatedTopicContent]}>
+                          <Text style={styles.relatedTopicEmoji}>
+                            {relatedTopic.emoji}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.relatedTopicText,
+                              { color: colors.text },
+                            ]}
+                          >
+                            {capitalizeText(relatedTopic.name)}
+                          </Text>
+                        </Animated.View>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </View>
+            </>
+          )}
         </ScrollView>
 
         {/* Floating Start Learning Button */}
-        <View style={styles.floatingButtonContainer}>
-          <TouchableOpacity
-            style={styles.startLearningButton}
-            onPress={() => setShowDurationModal(true)}
-          >
-            <Play size={20} color="#fff" />
-            <Text style={styles.startLearningText}>Start Learning</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Loading Overlay */}
-        {generatingTopic && (
-          <View style={styles.loadingOverlay}>
-            <LoadingSpinner />
-            <Text style={styles.loadingText}>Loading {generatingTopic}...</Text>
+        {topic && (
+          <View style={styles.floatingButtonContainer}>
+            <TouchableOpacity
+              style={styles.startLearningButton}
+              onPress={() => setShowDurationModal(true)}
+            >
+              <Play size={20} color="#fff" />
+              <Text style={styles.startLearningText}>Start Learning</Text>
+            </TouchableOpacity>
           </View>
+        )}
+
+        {/* Single loading overlay for all loading states */}
+        {loading && (
+          <LoadingOverlay
+            variant="overlay"
+            message={loadingMessage}
+            style={styles.loadingOverlay}
+          />
         )}
       </View>
 
       {/* Duration Selection Modal */}
-      <Modal
-        visible={showDurationModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowDurationModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose Session Duration</Text>
-              <TouchableOpacity
-                onPress={() => setShowDurationModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <X size={24} color="#000" />
-              </TouchableOpacity>
+      {topic && (
+        <Modal
+          visible={showDurationModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowDurationModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Choose Session Duration</Text>
+                <TouchableOpacity
+                  onPress={() => setShowDurationModal(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <X size={24} color="#000" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modalSubtitle}>
+                How long would you like to learn for?
+              </Text>
+              {[1, 5, 10, 15].map((duration) => (
+                <TouchableOpacity
+                  key={duration}
+                  style={styles.durationOption}
+                  onPress={() =>
+                    handleStartLearning(duration as SessionDuration)
+                  }
+                >
+                  <Clock size={20} color="#666" />
+                  <Text style={styles.durationText}>
+                    {duration} minute{duration > 1 ? "s" : ""}
+                  </Text>
+                  <Text style={styles.durationSubtext}>
+                    ~{Math.ceil(duration / 3)} videos
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <Text style={styles.modalSubtitle}>
-              How long would you like to learn for?
-            </Text>
-            {[1, 5, 10, 15].map((duration) => (
-              <TouchableOpacity
-                key={duration}
-                style={styles.durationOption}
-                onPress={() => handleStartLearning(duration as SessionDuration)}
-              >
-                <Clock size={20} color="#666" />
-                <Text style={styles.durationText}>
-                  {duration} minute{duration > 1 ? "s" : ""}
-                </Text>
-                <Text style={styles.durationSubtext}>
-                  ~{Math.ceil(duration / 3)} videos
-                </Text>
-              </TouchableOpacity>
-            ))}
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </>
   )
 }
@@ -932,20 +962,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   loadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     backgroundColor: "rgba(255, 255, 255, 0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1000,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    fontWeight: "500",
   },
 })

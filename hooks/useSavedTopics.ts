@@ -4,13 +4,11 @@ import {
   collection,
   query,
   orderBy,
-  getDocs,
   Timestamp,
-  where,
   doc,
   setDoc,
   deleteDoc,
-  getDoc,
+  onSnapshot,
 } from "@react-native-firebase/firestore"
 import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 import { GeneratedTopic } from "../types/topic"
@@ -37,42 +35,45 @@ export const useSavedTopics = (): UseSavedTopicsResult => {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadSavedTopics = async () => {
-      if (!user) {
-        setLoading(false)
-        return
-      }
+    if (!user) {
+      setLoading(false)
+      return
+    }
 
-      try {
-        const savedTopicsRef = collection(
-          firestore,
-          FIREBASE_COLLECTIONS.USERS,
-          user.uid,
-          "favoritedTopics"
-        )
-        const savedTopicsQuery = query(
-          savedTopicsRef,
-          orderBy("favoritedAt", "desc")
-        )
-        const snapshot = await getDocs(savedTopicsQuery)
+    // Create query for saved topics
+    const savedTopicsRef = collection(
+      firestore,
+      FIREBASE_COLLECTIONS.USERS,
+      user.uid,
+      "favoritedTopics"
+    )
+    const savedTopicsQuery = query(
+      savedTopicsRef,
+      orderBy("favoritedAt", "desc")
+    )
 
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(
+      savedTopicsQuery,
+      (snapshot) => {
         const loadedTopics: SavedTopic[] = []
         snapshot.forEach((doc) => {
           loadedTopics.push({ id: doc.id, ...doc.data() } as SavedTopic)
         })
-
         setTopics(loadedTopics)
-      } catch (err) {
-        console.error("Error loading saved topics:", err)
+        setLoading(false)
+      },
+      (err) => {
+        console.error("Error in saved topics subscription:", err)
         setError(
           err instanceof Error ? err.message : "Failed to load saved topics"
         )
-      } finally {
         setLoading(false)
       }
-    }
+    )
 
-    loadSavedTopics()
+    // Cleanup subscription on unmount
+    return () => unsubscribe()
   }, [user])
 
   const favoriteTopic = useCallback(
@@ -100,9 +101,7 @@ export const useSavedTopics = (): UseSavedTopicsResult => {
         )
 
         await setDoc(topicRef, savedTopic)
-
-        // Update local state
-        setTopics((prev) => [savedTopic, ...prev])
+        // Remove local state update since we have real-time updates
       } catch (err) {
         console.error("Error favoriting topic:", err)
         throw err
@@ -125,9 +124,7 @@ export const useSavedTopics = (): UseSavedTopicsResult => {
         )
 
         await deleteDoc(topicRef)
-
-        // Update local state
-        setTopics((prev) => prev.filter((t) => t.id !== topicId))
+        // Remove local state update since we have real-time updates
       } catch (err) {
         console.error("Error unfavoriting topic:", err)
         throw err
