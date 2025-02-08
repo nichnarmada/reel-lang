@@ -20,8 +20,6 @@ import {
   ChevronLeft,
   Play,
   Clock,
-  Users,
-  BookOpen,
   X,
   Sparkles,
   Star,
@@ -52,7 +50,6 @@ interface TopicDetailsParams {
   isGenerated?: string
   category?: string
   name?: string
-  originTab?: string
 }
 
 type DisplayTopic = GeneratedTopic & { id: string }
@@ -205,7 +202,7 @@ export default function TopicDetailsScreen() {
 
       // Navigate to reels with session ID
       setShowDurationModal(false)
-      router.push({
+      router.replace({
         pathname: "/topic/[id]/reels" as const,
         params: {
           id: topic.id,
@@ -219,7 +216,7 @@ export default function TopicDetailsScreen() {
       console.error("Error creating session:", err)
       // Still navigate even if session creation fails
       setShowDurationModal(false)
-      router.push({
+      router.replace({
         pathname: "/topic/[id]/reels" as const,
         params: {
           id: topic.id,
@@ -273,11 +270,8 @@ export default function TopicDetailsScreen() {
         .toLowerCase()
         .replace(/\s+/g, "-")}`
 
-      // Get the original tab from params or default to "index"
-      const originTab = params.originTab || "index"
-
       // Navigate to topic details
-      router.push({
+      router.replace({
         pathname: "/topic/[id]",
         params: {
           id: topicId,
@@ -290,7 +284,6 @@ export default function TopicDetailsScreen() {
           confidence: generatedTopic.confidence.toString(),
           searchTerms: JSON.stringify(generatedTopic.searchTerms),
           relatedTopics: JSON.stringify(generatedTopic.relatedTopics),
-          originTab,
         },
       })
     } catch (error) {
@@ -330,13 +323,6 @@ export default function TopicDetailsScreen() {
     }
   }
 
-  // Back button handler
-  const handleBackPress = () => {
-    const originTab = params.originTab || "index"
-    // Use type assertion to handle the dynamic path
-    router.dismissTo("/(tabs)" as const)
-  }
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -350,7 +336,10 @@ export default function TopicDetailsScreen() {
     return (
       <View style={styles.centerContainer}>
         <ErrorMessage message={error || "Topic not found"} />
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -370,7 +359,7 @@ export default function TopicDetailsScreen() {
           <View style={styles.header}>
             <View style={styles.headerRow}>
               <TouchableOpacity
-                onPress={handleBackPress}
+                onPress={() => router.back()}
                 style={styles.backButton}
               >
                 <ChevronLeft size={24} color="#000" />
