@@ -17,9 +17,20 @@ import {
   ThumbsDown,
   Bookmark,
   BookmarkCheck,
+  Heart,
 } from "lucide-react-native"
 import { LAYOUT } from "../../constants/layout"
 import { useSavedVideos } from "../../hooks/useSavedVideos"
+import { theme } from "../../constants/theme"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  withSequence,
+  runOnJS,
+} from "react-native-reanimated"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT - LAYOUT.TAB_BAR_HEIGHT
@@ -71,6 +82,8 @@ export default function VideoPlayer({
   const isSaved = videoInfo
     ? videos.some((v) => v.videoId === videoInfo.id)
     : false
+  const scale = useSharedValue(0)
+  const opacity = useSharedValue(0)
 
   useEffect(() => {
     setPaused(initialPaused)
@@ -105,22 +118,35 @@ export default function VideoPlayer({
     setIsMuted(!isMuted)
   }
 
+  const showLikeAnimation = () => {
+    "worklet"
+    scale.value = withSequence(
+      withSpring(1.2),
+      withSpring(1),
+      withTiming(0, { duration: 300 })
+    )
+    opacity.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withTiming(1, { duration: 300 }),
+      withTiming(0, { duration: 200 })
+    )
+  }
+
   const handleLike = () => {
-    if (!isDisliked) {
-      setIsLiked(!isLiked)
-      onLike?.()
+    if (isLiked) {
+      setIsLiked(false)
     } else {
       setIsDisliked(false)
+      setIsLiked(true)
+      showLikeAnimation()
+      onLike?.()
     }
   }
 
   const handleDislike = () => {
-    if (!isLiked) {
-      setIsDisliked(!isDisliked)
-      onDislike?.()
-    } else {
-      setIsLiked(false)
-    }
+    setIsLiked(false)
+    setIsDisliked(!isDisliked)
+    onDislike?.()
   }
 
   const handleSave = async () => {
@@ -169,32 +195,73 @@ export default function VideoPlayer({
     }
   }
 
+  // Single tap for play/pause
+  const singleTap = Gesture.Tap()
+    .maxDuration(250)
+    .onStart(() => {
+      "worklet"
+      runOnJS(togglePlayPause)()
+    })
+
+  // Double tap for like
+  const doubleTap = Gesture.Tap()
+    .maxDuration(250)
+    .numberOfTaps(2)
+    .onStart(() => {
+      "worklet"
+      if (!isLiked) {
+        runOnJS(setIsDisliked)(false)
+        runOnJS(setIsLiked)(true)
+        onLike && runOnJS(onLike)()
+      }
+      showLikeAnimation()
+    })
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    }
+  })
+
   return (
     <View style={[styles.container, style]}>
-      <Video
-        ref={videoRef}
-        source={{ uri }}
-        style={styles.video}
-        resizeMode="cover"
-        repeat={repeat}
-        paused={paused}
-        muted={isMuted}
-        onLoad={handleLoad}
-        onError={handleError}
-        onProgress={handleProgress}
-        onEnd={handleEnd}
-        playInBackground={false}
-        playWhenInactive={false}
-        ignoreSilentSwitch="ignore"
-        {...(Platform.OS === "ios"
-          ? { automaticallyWaitsToMinimizeStalling: false }
-          : {})}
-      />
+      <GestureDetector gesture={Gesture.Exclusive(doubleTap, singleTap)}>
+        <View style={styles.videoWrapper}>
+          <Video
+            ref={videoRef}
+            source={{ uri }}
+            style={styles.video}
+            resizeMode="cover"
+            repeat={repeat}
+            paused={paused}
+            muted={isMuted}
+            onLoad={handleLoad}
+            onError={handleError}
+            onProgress={handleProgress}
+            onEnd={handleEnd}
+            playInBackground={false}
+            playWhenInactive={false}
+            ignoreSilentSwitch="ignore"
+            {...(Platform.OS === "ios"
+              ? { automaticallyWaitsToMinimizeStalling: false }
+              : {})}
+          />
+          {paused && !loading && (
+            <View style={styles.pauseOverlay}>
+              <Play size={64} color={theme.colors.text.inverse} />
+            </View>
+          )}
+          <Animated.View style={[styles.likeAnimation, animatedStyle]}>
+            <ThumbsUp size={80} color={theme.colors.text.inverse} />
+          </Animated.View>
+        </View>
+      </GestureDetector>
 
       {/* Loading Indicator */}
       {loading && (
         <View style={styles.overlay}>
-          <ActivityIndicator size="large" color="#fff" />
+          <ActivityIndicator size="large" color={theme.colors.text.inverse} />
         </View>
       )}
 
@@ -209,7 +276,7 @@ export default function VideoPlayer({
           onPress={handleLike}
           style={[styles.controlButton, isLiked && styles.activeControlButton]}
         >
-          <ThumbsUp size={24} color="#fff" />
+          <ThumbsUp size={24} color={theme.colors.text.inverse} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -219,25 +286,14 @@ export default function VideoPlayer({
             isDisliked && styles.activeControlButton,
           ]}
         >
-          <ThumbsDown size={24} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={togglePlayPause}
-          style={styles.controlButton}
-        >
-          {paused ? (
-            <Play size={24} color="#fff" />
-          ) : (
-            <Pause size={24} color="#fff" />
-          )}
+          <ThumbsDown size={24} color={theme.colors.text.inverse} />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={toggleMute} style={styles.controlButton}>
           {isMuted ? (
-            <VolumeX size={24} color="#fff" />
+            <VolumeX size={24} color={theme.colors.text.inverse} />
           ) : (
-            <Volume2 size={24} color="#fff" />
+            <Volume2 size={24} color={theme.colors.text.inverse} />
           )}
         </TouchableOpacity>
 
@@ -250,9 +306,9 @@ export default function VideoPlayer({
             onPress={handleSave}
           >
             {isSaved ? (
-              <BookmarkCheck size={24} color="#8a2be2" />
+              <BookmarkCheck size={24} color={theme.colors.text.inverse} />
             ) : (
-              <Bookmark size={24} color="#fff" />
+              <Bookmark size={24} color={theme.colors.text.inverse} />
             )}
           </TouchableOpacity>
         )}
@@ -265,6 +321,9 @@ const styles = StyleSheet.create({
   container: {
     height: CONTAINER_HEIGHT,
     backgroundColor: "#000",
+  },
+  videoWrapper: {
+    flex: 1,
   },
   video: {
     flex: 1,
@@ -286,7 +345,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.text.inverse,
   },
   controlsContainer: {
     position: "absolute",
@@ -304,6 +363,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   activeControlButton: {
-    backgroundColor: "rgba(138, 43, 226, 0.7)",
+    backgroundColor: `${theme.colors.primary}B3`, // B3 is ~70% opacity in hex
+  },
+  pauseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  likeAnimation: {
+    position: "absolute",
+    alignSelf: "center",
+    top: "50%",
+    transform: [{ translateY: -40 }], // Half the heart icon size
+    justifyContent: "center",
+    alignItems: "center",
   },
 })

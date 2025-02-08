@@ -2,6 +2,7 @@ import { AuthProvider } from "../contexts/auth"
 import { useEffect, useState } from "react"
 import { useSegments, Stack, useRouter } from "expo-router"
 import { useAuth } from "../contexts/auth"
+import { GestureHandlerRootView } from "react-native-gesture-handler"
 
 // This component handles the auth flow routing
 function ProtectedLayout() {
@@ -51,8 +52,10 @@ function ProtectedLayout() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <ProtectedLayout />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <ProtectedLayout />
+      </AuthProvider>
+    </GestureHandlerRootView>
   )
 }
