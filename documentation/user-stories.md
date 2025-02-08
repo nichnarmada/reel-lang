@@ -12,6 +12,14 @@
 - [x] As a learner, I want AI to suggest specific topics based on my search
 - [x] As a learner, I want to see topic suggestions in an interactive modal
 
+### Navigation & UI Stories
+
+- [x] As a learner, I want an intuitive way to access my saved content and history
+- [x] As a learner, I want smooth and natural gesture controls for navigation
+- [x] As a learner, I want visually pleasing animations and transitions
+- [x] As a learner, I want consistent styling throughout the app
+- [x] As a learner, I want clear visual feedback for my interactions
+
 ### Additional Features
 
 - [x] As a learner, I want topic suggestions if I'm unsure what to learn
