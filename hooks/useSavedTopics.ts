@@ -15,11 +15,8 @@ import {
 import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 import { GeneratedTopic } from "../types/topic"
 
-export interface SavedTopic {
+export interface SavedTopic extends GeneratedTopic {
   id: string
-  name: string
-  category: string
-  emoji: string
   favoritedAt: Timestamp
   isGeneratedTopic: boolean
 }
@@ -88,10 +85,8 @@ export const useSavedTopics = (): UseSavedTopicsResult => {
           .replace(/\s+/g, "-")}`
 
         const savedTopic: SavedTopic = {
+          ...topic,
           id: topicId,
-          name: topic.name,
-          category: topic.category,
-          emoji: topic.emoji,
           favoritedAt: Timestamp.now(),
           isGeneratedTopic: true,
         }

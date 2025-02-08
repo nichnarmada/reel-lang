@@ -36,9 +36,26 @@ export default function SavedTopicsScreen() {
   }
 
   const handleTopicPress = (topic: SavedTopic) => {
+    // Generate a consistent ID for the topic
+    const topicId = `${topic.category}-${topic.name
+      .toLowerCase()
+      .replace(/\s+/g, "-")}`
+
+    // Navigate with all topic data
     router.push({
       pathname: "/topic/[id]" as const,
-      params: { id: topic.id },
+      params: {
+        id: topicId,
+        isGenerated: topic.isGeneratedTopic.toString(),
+        category: topic.category,
+        name: topic.name,
+        description: topic.description,
+        emoji: topic.emoji,
+        reasonForSuggestion: topic.reasonForSuggestion,
+        confidence: topic.confidence.toString(),
+        searchTerms: JSON.stringify(topic.searchTerms),
+        relatedTopics: JSON.stringify(topic.relatedTopics),
+      },
     })
   }
 
