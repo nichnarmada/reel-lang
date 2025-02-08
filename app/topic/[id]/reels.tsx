@@ -23,7 +23,6 @@ import {
 } from "../../../utils/pexels"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { ErrorMessage } from "../../../components/ErrorMessage"
-import analytics from "@react-native-firebase/analytics"
 import {
   getCollection,
   getDocument,
@@ -101,15 +100,6 @@ export default function ReelsScreen() {
 
       await quizRef.set(quizData)
 
-      // Log session completion
-      analytics().logEvent("session_complete", {
-        session_id: currentSessionId,
-        topic_id: currentTopicId,
-        topic_name: currentTopicName,
-        duration: duration,
-        videos_watched: videos.length,
-      })
-
       Alert.alert(
         "Time's Up!",
         "Your learning session is complete. Ready for a quick quiz?",
@@ -179,14 +169,6 @@ export default function ReelsScreen() {
       if (viewableItems.length > 0) {
         const newVisibleVideo = viewableItems[0].item
         setVisibleVideoId(newVisibleVideo.id)
-
-        // Log video start event
-        analytics().logEvent("video_start", {
-          video_id: newVisibleVideo.id,
-          topic_id: Array.isArray(topicId) ? topicId[0] : topicId,
-          topic_name: topicName,
-          session_id: Array.isArray(sessionId) ? sessionId[0] : sessionId,
-        })
       }
     },
     [topicId, topicName, sessionId]

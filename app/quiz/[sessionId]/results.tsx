@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"
+import React from "react"
 import {
   View,
   Text,
@@ -15,7 +15,6 @@ import {
   RotateCcw,
   Play,
 } from "lucide-react-native"
-import analytics from "@react-native-firebase/analytics"
 
 export default function QuizResultsScreen() {
   const { sessionId, score } = useLocalSearchParams()
@@ -24,16 +23,6 @@ export default function QuizResultsScreen() {
   const totalQuestions = 3 // This should match the total questions in your quiz
   const scoreNum = parseInt(currentScore as string, 10)
   const percentage = (scoreNum / totalQuestions) * 100
-
-  // Log quiz completion when results are shown
-  useEffect(() => {
-    analytics().logEvent("quiz_complete", {
-      session_id: currentSessionId,
-      score: scoreNum,
-      total_questions: totalQuestions,
-      percentage: percentage,
-    })
-  }, [currentSessionId, scoreNum, totalQuestions, percentage])
 
   const getFeedback = () => {
     if (percentage >= 80) return "Excellent! You've mastered this topic!"
