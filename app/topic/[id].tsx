@@ -10,6 +10,7 @@ import {
   Modal,
   Dimensions,
   Animated,
+  PanResponder,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
 import { GeneratedTopic, RelatedTopic } from "../../types/topic"
@@ -62,12 +63,16 @@ export default function TopicDetailsScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showDurationModal, setShowDurationModal] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState("Loading topic...")
   const pulseAnim = useRef(new Animated.Value(1)).current
   const starScale = useRef(new Animated.Value(1)).current
   const topicColors = useRef<
     Record<string, { background: string; text: string }>
   >({}).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(100)).current
+  const dragY = useRef(new Animated.Value(0)).current
 
   const { favoriteTopic, unfavoriteTopic, isTopicFavorited } = useSavedTopics()
 
@@ -83,6 +88,72 @@ export default function TopicDetailsScreen() {
   ]
 
   const [relatedTopicLoading, setRelatedTopicLoading] = useState(false)
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward drag
+        if (gestureState.dy > 0) {
+          dragY.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100) {
+          handleCloseModal()
+        } else {
+          // Otherwise, snap back to original position
+          Animated.spring(dragY, {
+            toValue: 0,
+            tension: 65,
+            friction: 11,
+            useNativeDriver: true,
+          }).start()
+        }
+      },
+    })
+  ).current
+
+  const handleCloseModal = () => {
+    setShowDurationModal(false)
+  }
+
+  useEffect(() => {
+    if (showDurationModal) {
+      setModalVisible(true)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 100,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false)
+        dragY.setValue(0)
+      })
+    }
+  }, [showDurationModal])
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -554,25 +625,54 @@ export default function TopicDetailsScreen() {
       {/* Duration Selection Modal */}
       {topic && (
         <Modal
-          visible={showDurationModal}
-          animationType="slide"
+          visible={modalVisible}
           transparent={true}
-          onRequestClose={() => setShowDurationModal(false)}
+          onRequestClose={handleCloseModal}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                opacity: fadeAnim,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={handleCloseModal}
+            />
+            <Animated.View
+              style={[
+                styles.modalContent,
+                {
+                  transform: [
+                    {
+                      translateY: Animated.add(
+                        slideAnim.interpolate({
+                          inputRange: [0, 100],
+                          outputRange: [0, 800],
+                        }),
+                        dragY
+                      ),
+                    },
+                  ],
+                },
+              ]}
+              {...panResponder.panHandlers}
+            >
+              <View style={styles.dragHandleContainer}>
+                <View style={styles.dragHandle} />
+              </View>
+
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Choose Session Duration</Text>
-                <TouchableOpacity
-                  onPress={() => setShowDurationModal(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <X size={24} color="#000" />
-                </TouchableOpacity>
               </View>
+
               <Text style={styles.modalSubtitle}>
                 How long would you like to learn for?
               </Text>
+
               {[1, 5, 10, 15].map((duration) => (
                 <TouchableOpacity
                   key={duration}
@@ -581,7 +681,7 @@ export default function TopicDetailsScreen() {
                     handleStartLearning(duration as SessionDuration)
                   }
                 >
-                  <Clock size={20} color="#666" />
+                  <Clock size={20} color={theme.colors.text.secondary} />
                   <Text style={styles.durationText}>
                     {duration} minute{duration > 1 ? "s" : ""}
                   </Text>
@@ -590,8 +690,8 @@ export default function TopicDetailsScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         </Modal>
       )}
     </>
@@ -780,33 +880,46 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     backgroundColor: theme.colors.background.primary,
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
-    padding: theme.spacing.xl,
     paddingBottom: Platform.OS === "ios" ? 40 : theme.spacing.xl,
+  },
+  dragHandleContainer: {
+    width: "100%",
+    alignItems: "center",
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: theme.colors.border.dark,
+    borderRadius: theme.borderRadius.full,
   },
   modalHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
   },
   modalTitle: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
   },
-  modalCloseButton: {
-    padding: theme.spacing.xs,
-  },
   modalSubtitle: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
   },
   durationOption: {
     flexDirection: "row",
