@@ -98,7 +98,7 @@ export default function ReelsScreen() {
                   remainingTimeSeconds: Math.max(0, remainingTimeSeconds),
                 })
                 resolve(true)
-                router.back()
+                router.dismissTo("/(tabs)" as const)
               } catch (error) {
                 console.error("Error saving session progress:", error)
                 Alert.alert(

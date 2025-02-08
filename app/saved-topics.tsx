@@ -55,6 +55,7 @@ export default function SavedTopicsScreen() {
         confidence: topic.confidence.toString(),
         searchTerms: JSON.stringify(topic.searchTerms),
         relatedTopics: JSON.stringify(topic.relatedTopics),
+        originTab: "profile",
       },
     })
   }

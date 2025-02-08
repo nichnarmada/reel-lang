@@ -258,6 +258,7 @@ export default function DiscoverScreen() {
         confidence: topic.confidence.toString(),
         searchTerms: JSON.stringify(topic.searchTerms),
         relatedTopics: JSON.stringify(topic.relatedTopics),
+        originTab: "index",
       },
     })
   }
