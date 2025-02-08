@@ -21,33 +21,22 @@ function ProtectedLayout() {
     const inAuthGroup = segments[0] === "(auth)"
     const inOnboarding = segments[0] === "onboarding"
 
-    // Don't redirect if we're still loading any states
-    if (loading) {
-      return
-    }
+    if (loading) return
 
-    // Only proceed with routing logic if we have definitive information
     if (!user) {
       // If the user is not signed in and the initial segment is not in the auth group
       if (!inAuthGroup) {
         router.replace("/sign-in")
       }
-    } else {
-      // We now have a user, wait for hasCompletedOnboarding to be definitively set
-      if (hasCompletedOnboarding === undefined) {
-        return
+    } else if (!hasCompletedOnboarding) {
+      // If the user is signed in but hasn't completed onboarding
+      if (!inOnboarding) {
+        router.replace("/onboarding")
       }
-
-      if (!hasCompletedOnboarding) {
-        // If the user is signed in but hasn't completed onboarding
-        if (!inOnboarding) {
-          router.replace("/onboarding")
-        }
-      } else {
-        // If the user is signed in and has completed onboarding
-        if (inAuthGroup || inOnboarding) {
-          router.replace("/")
-        }
+    } else {
+      // If the user is signed in and has completed onboarding
+      if (inAuthGroup || inOnboarding) {
+        router.replace("/")
       }
     }
   }, [user, loading, hasCompletedOnboarding, segments, mounted])
