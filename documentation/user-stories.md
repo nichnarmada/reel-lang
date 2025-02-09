@@ -45,10 +45,22 @@
 
 ## Week 2
 
+### Quiz Features
+
+- [x] As a learner, I want to take quizzes to test my knowledge
+- [x] As a learner, I want to see my quiz results immediately
+- [x] As a learner, I want to review my answers after completing a quiz
+- [x] As a learner, I want to retry a quiz if I'm not satisfied with my score
+- [x] As a learner, I want to generate new quizzes on the same topic
+- [x] As a learner, I want to see explanations for incorrect answers
+- [x] As a learner, I want to track my quiz performance
+- [ ] As a learner, I want to identify my knowledge gaps
+
 ### Core AI Features
 
-- [x] As a learner, I want AI-generated topic suggestions based on my interests
-- [ ] As a learner, I want personalized topic suggestions
+- [x] As a learner, I want AI-generated quiz questions based on my topic
+- [x] As a learner, I want personalized topic suggestions
+- [x] As a learner, I want clear explanations for quiz answers
 - [ ] As a learner, I want to see my knowledge gaps in topics
 - [ ] As a learner, I want topic mastery tracking
 - [ ] As a learner, I want learning path recommendations

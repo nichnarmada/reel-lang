@@ -56,26 +56,30 @@
 
 ### Phase 2: Learning Features (Week 1-2)
 
-- [ ] Quiz Generation System
+- [x] Quiz Generation System
 
   - [x] Set up Gemini AI integration
+  - [x] Create quiz generation logic
+  - [x] Build quiz UI and interaction
+  - [x] Implement quiz review system
+  - [x] Add multiple quiz attempts
+  - [x] Enable new quiz generation
   - [ ] Implement video content analysis
-  - [ ] Create quiz generation logic
-  - [ ] Build quiz UI and interaction
 
 - [x] Learning Statistics Overview
 
   - [x] Implement total learning time tracking
   - [x] Track sessions completed
-  - [ ] Monitor topics explored count
-  - [ ] Calculate and display average quiz scores
+  - [x] Monitor topics explored count
+  - [x] Calculate and display quiz scores
   - [ ] Track weekly/monthly learning streaks
 
-- [ ] Analytics Integration
+- [x] Analytics Integration
 
   - [x] Set up Firebase Analytics
-  - [ ] Track user engagement metrics
-  - [ ] Monitor learning patterns
+  - [x] Track user engagement metrics
+  - [x] Monitor learning patterns
+  - [x] Track quiz performance
 
 ### Phase 3: Personalization & Advanced Stats (Week 2)
 
