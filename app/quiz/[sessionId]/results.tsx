@@ -6,14 +6,15 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native"
 import { Stack, useLocalSearchParams, router } from "expo-router"
 import {
   ChevronLeft,
   Trophy,
-  Share2,
   RotateCcw,
   Play,
+  BookPlus,
 } from "lucide-react-native"
 import {
   getDocument,
@@ -22,12 +23,22 @@ import {
 import { Quiz } from "../../../types/quiz"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { ErrorMessage } from "../../../components/ErrorMessage"
+import { LoadingOverlay } from "../../../components/LoadingOverlay"
+import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
+import { Session } from "../../../types/session"
+import { theme } from "../../../constants/theme"
 
 export default function QuizResultsScreen() {
   const { sessionId, score, quizId, totalQuestions } = useLocalSearchParams()
   const [quiz, setQuiz] = useState<Quiz | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [generatingQuiz, setGeneratingQuiz] = useState({
+    show: false,
+    message: "",
+    step: 0,
+    totalSteps: 3,
+  })
 
   const currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
   const currentScore = Array.isArray(score) ? score[0] : score
@@ -75,9 +86,63 @@ export default function QuizResultsScreen() {
     return "#FF5722"
   }
 
-  const handleShare = () => {
-    // TODO: Implement share functionality
-    console.log("Share results")
+  const handleNewQuiz = async () => {
+    try {
+      // Start loading with first step
+      setGeneratingQuiz({
+        show: true,
+        message: "Analyzing topic...",
+        step: 1,
+        totalSteps: 3,
+      })
+
+      // Get the session data
+      const currentSessionId = Array.isArray(sessionId)
+        ? sessionId[0]
+        : sessionId
+      const sessionDoc = getDocument(
+        FIREBASE_COLLECTIONS.SESSIONS,
+        currentSessionId
+      )
+      const sessionSnapshot = await sessionDoc.get()
+
+      if (!sessionSnapshot.exists) {
+        throw new Error("Session not found")
+      }
+
+      const session = {
+        ...sessionSnapshot.data(),
+        id: currentSessionId,
+      } as Session
+
+      // Simulate a small delay for UX
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      // Update to second step
+      setGeneratingQuiz((prev) => ({
+        ...prev,
+        message: "Generating new questions...",
+        step: 2,
+      }))
+
+      // Generate the quiz
+      await startQuizAfterSession(session)
+
+      // Final step before navigation
+      setGeneratingQuiz((prev) => ({
+        ...prev,
+        message: "Preparing your quiz experience...",
+        step: 3,
+      }))
+
+      // Small delay to show the final step
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    } catch (error) {
+      console.error("Error generating new quiz:", error)
+      Alert.alert("Error", "Failed to generate new quiz. Please try again.")
+    } finally {
+      setGeneratingQuiz((prev) => ({ ...prev, show: false }))
+    }
   }
 
   const handleRetry = () => {
@@ -164,14 +229,24 @@ export default function QuizResultsScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-              <Share2 size={20} color="#666" />
-              <Text style={styles.actionButtonText}>Share Results</Text>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.errorButton]}
+              onPress={handleRetry}
+            >
+              <RotateCcw size={20} color={theme.colors.status.error} />
+              <Text style={[styles.actionButtonText, styles.errorButtonText]}>
+                Try Again
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={handleRetry}>
-              <RotateCcw size={20} color="#666" />
-              <Text style={styles.actionButtonText}>Try Again</Text>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.successButton]}
+              onPress={handleNewQuiz}
+            >
+              <BookPlus size={20} color={theme.colors.status.success} />
+              <Text style={[styles.actionButtonText, styles.successButtonText]}>
+                New Quiz
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -184,6 +259,16 @@ export default function QuizResultsScreen() {
             <Text style={styles.continueButtonText}>Review Answers</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* Loading Overlay */}
+        {generatingQuiz.show && (
+          <LoadingOverlay
+            variant="overlay"
+            message={`${generatingQuiz.message} (${generatingQuiz.step}/${generatingQuiz.totalSteps})`}
+            size="large"
+            isTransparent={false}
+          />
+        )}
       </View>
     </>
   )
@@ -262,16 +347,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 16,
-    backgroundColor: "#f8f9fa",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     borderRadius: 12,
     gap: 8,
     maxWidth: 160,
+    borderWidth: 1,
+    height: 56,
   },
   actionButtonText: {
     fontSize: 14,
-    color: "#666",
     fontWeight: "500",
+  },
+  successButton: {
+    backgroundColor: `${theme.colors.status.success}15`,
+    borderColor: theme.colors.status.success,
+  },
+  successButtonText: {
+    color: theme.colors.status.success,
+  },
+  errorButton: {
+    backgroundColor: `${theme.colors.status.error}15`,
+    borderColor: theme.colors.status.error,
+  },
+  errorButtonText: {
+    color: theme.colors.status.error,
   },
   continueButton: {
     flexDirection: "row",
@@ -283,6 +383,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
     width: "100%",
+    height: 56,
   },
   continueButtonText: {
     color: "#fff",
