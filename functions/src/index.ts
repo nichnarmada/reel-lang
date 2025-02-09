@@ -21,6 +21,33 @@ interface Quiz {
   }
 }
 
+interface SessionAnalytics {
+  actualDuration: number // in seconds
+  pauseCount: number
+  timeOfDay: "morning" | "afternoon" | "evening" | "night"
+  dayOfWeek: number // 0-6 for Sunday-Saturday
+  completionRate: number // percentage of planned duration completed
+}
+
+interface Session {
+  id: string
+  userId: string
+  topicId: string
+  topicName: string
+  status: "active" | "completed" | "paused"
+  startTime: admin.firestore.Timestamp
+  completedAt?: admin.firestore.Timestamp
+  pausedAt?: admin.firestore.Timestamp
+  resumedAt?: admin.firestore.Timestamp
+  duration: number // in minutes
+  progress?: {
+    timeSpentSeconds: number
+    videosWatched: number
+    remainingTimeSeconds: number
+  }
+  analytics?: SessionAnalytics
+}
+
 interface UserStats {
   totalLearningTime: number
   sessionsCompleted: number
@@ -124,6 +151,38 @@ function updateWeeklyProgress(
   }
 }
 
+function calculateActualDuration(session: Session): number {
+  if (!session.completedAt) {
+    return session.progress?.timeSpentSeconds || 0
+  }
+  return (
+    session.progress?.timeSpentSeconds ||
+    session.completedAt.seconds - session.startTime.seconds
+  )
+}
+
+function calculatePauseCount(session: Session): number {
+  if (!session.pausedAt) return 0
+  // If we have both pausedAt and resumedAt, it means the session was paused and resumed
+  return session.pausedAt && session.resumedAt ? 1 : 0
+}
+
+function getTimeOfDay(
+  timestamp: admin.firestore.Timestamp
+): "morning" | "afternoon" | "evening" | "night" {
+  const hour = new Date(timestamp.seconds * 1000).getHours()
+  if (hour >= 5 && hour < 12) return "morning"
+  if (hour >= 12 && hour < 17) return "afternoon"
+  if (hour >= 17 && hour < 21) return "evening"
+  return "night"
+}
+
+function calculateCompletionRate(session: Session): number {
+  const planned = session.duration * 60 // convert minutes to seconds
+  const actual = session.progress?.timeSpentSeconds || 0
+  return Math.min((actual / planned) * 100, 100) // Cap at 100%
+}
+
 export const onQuizComplete = onDocumentWritten(
   "quizzes/{quizId}",
   async (event) => {
@@ -189,17 +248,77 @@ export const onQuizComplete = onDocumentWritten(
       }
 
       transaction.set(userRef, { stats: newStats }, { merge: true })
-
-      const analyticsData = {
-        user_id: userId,
-        session_id: newData.sessionId,
-        topic_id: sessionData.topicId,
-        topic_name: sessionData.topicName,
-        time_spent: totalTimeSpent,
-        sessions_completed: newStats.sessionsCompleted,
-      }
-
       return newStats
     })
+  }
+)
+
+export const onSessionStatusChange = onDocumentWritten(
+  "sessions/{sessionId}",
+  async (event) => {
+    const newData = event.data?.after?.data() as Session | undefined
+    const oldData = event.data?.before?.data() as Session | undefined
+
+    // Return if no data or if status hasn't changed
+    if (!newData || newData.status === oldData?.status) {
+      return null
+    }
+
+    // Only process completed or paused sessions
+    if (newData.status !== "completed" && newData.status !== "paused") {
+      return null
+    }
+
+    const sessionAnalytics: SessionAnalytics = {
+      actualDuration: calculateActualDuration(newData),
+      pauseCount: calculatePauseCount(newData),
+      timeOfDay: getTimeOfDay(newData.startTime),
+      dayOfWeek: new Date(newData.startTime.seconds * 1000).getDay(),
+      completionRate: calculateCompletionRate(newData),
+    }
+
+    const batch = admin.firestore().batch()
+
+    // Update session with analytics
+    const sessionRef = admin.firestore().collection("sessions").doc(newData.id)
+    batch.set(sessionRef, { analytics: sessionAnalytics }, { merge: true })
+
+    // If session is completed, update user stats
+    if (newData.status === "completed") {
+      const userRef = admin.firestore().collection("users").doc(newData.userId)
+      const userDoc = await userRef.get()
+
+      if (userDoc.exists) {
+        const userData = userDoc.data()
+        const currentStats = userData?.stats as UserStats
+
+        // Update user stats
+        const newStats: UserStats = {
+          ...currentStats,
+          totalLearningTime:
+            currentStats.totalLearningTime +
+            sessionAnalytics.actualDuration / 60, // Convert to minutes
+          sessionsCompleted: currentStats.sessionsCompleted + 1,
+          topicsProgress: updateTopicProgress(
+            currentStats.topicsProgress,
+            {
+              topicId: newData.topicId,
+              topicName: newData.topicName,
+            },
+            sessionAnalytics.actualDuration / 60 // Convert to minutes
+          ),
+          learningStreaks: updateStreaks(currentStats.learningStreaks),
+          weeklyProgress: updateWeeklyProgress(
+            currentStats.weeklyProgress,
+            sessionAnalytics.actualDuration / 60 // Convert to minutes
+          ),
+        }
+
+        batch.set(userRef, { stats: newStats }, { merge: true })
+      }
+    }
+
+    // Commit all updates
+    return batch.commit()
   }
 )

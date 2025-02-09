@@ -69,7 +69,7 @@ export default function OnboardingScreen() {
         <View style={styles.mainContent}>
           {/* Header Section */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Welcome to TimedTutor!</Text>
+            <Text style={styles.headerTitle}>Welcome to DiscoverAI!</Text>
             <Text style={styles.headerSubtitle}>
               Select topics you're interested in learning about. Choose at least
               {minimumCategories} to get started.

@@ -28,14 +28,19 @@ import { ErrorMessage } from "../../components/ErrorMessage"
 import { format } from "date-fns"
 import { useUserTopics } from "../../hooks/useUserTopics"
 import { theme } from "../../constants/theme"
+import {
+  useUserStats,
+  formatDuration,
+  formatDate,
+  calculateDailyGoalProgress,
+} from "../../hooks/useUserStats"
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
 
 export default function StatsScreen() {
   const { user } = useAuth()
-  // Temporarily disable topics loading until stats logic is fully implemented
-  // const { topics, loading: topicsLoading, error: topicsError } = useUserTopics()
-  const [loading, setLoading] = React.useState(false)
+  const { stats, loading, error } = useUserStats(user?.uid)
+  const { topics } = useUserTopics()
 
   if (loading) {
     return (
@@ -46,43 +51,19 @@ export default function StatsScreen() {
     )
   }
 
-  // Static data for now
-  const stats = {
-    totalTimeSpent: 120,
-    totalSessions: 8,
-    activeTopics: 3,
-    achievements: 4,
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <ErrorMessage message="Failed to load stats" />
+      </View>
+    )
   }
 
-  const sampleTopics = [
-    {
-      id: "1",
-      name: "Machine Learning",
-      emoji: "🤖",
-      stats: {
-        totalTimeSpent: 45,
-        lastStudied: "Apr 15",
-      },
-    },
-    {
-      id: "2",
-      name: "Web Development",
-      emoji: "🌐",
-      stats: {
-        totalTimeSpent: 35,
-        lastStudied: "Apr 14",
-      },
-    },
-    {
-      id: "3",
-      name: "Data Science",
-      emoji: "📊",
-      stats: {
-        totalTimeSpent: 40,
-        lastStudied: "Apr 13",
-      },
-    },
-  ]
+  // Calculate today's stats
+  const today = new Date().toISOString().split("T")[0]
+  const todayActivity = stats?.learningStreaks?.weeklyActivity?.[today] || 0
+  const dailyGoal = 30 // 30 minutes daily goal
+  const dailyProgress = calculateDailyGoalProgress(todayActivity, dailyGoal)
 
   return (
     <ScrollView style={styles.container}>
@@ -96,19 +77,25 @@ export default function StatsScreen() {
         <View style={styles.progressContainer}>
           <View style={styles.progressItem}>
             <Flame size={24} color={theme.colors.primary} />
-            <Text style={styles.progressValue}>3</Text>
+            <Text style={styles.progressValue}>
+              {stats?.learningStreaks?.current || 0}
+            </Text>
             <Text style={styles.progressLabel}>Day Streak</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.progressItem}>
             <Timer size={24} color={theme.colors.primary} />
-            <Text style={styles.progressValue}>25m</Text>
+            <Text style={styles.progressValue}>
+              {formatDuration(todayActivity)}
+            </Text>
             <Text style={styles.progressLabel}>Today's Time</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.progressItem}>
             <Target size={24} color={theme.colors.primary} />
-            <Text style={styles.progressValue}>30m</Text>
+            <Text style={styles.progressValue}>
+              {Math.round(dailyProgress)}%
+            </Text>
             <Text style={styles.progressLabel}>Daily Goal</Text>
           </View>
         </View>
@@ -120,23 +107,31 @@ export default function StatsScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Clock size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{stats.totalTimeSpent}m</Text>
+            <Text style={styles.statValue}>
+              {formatDuration(stats?.totalLearningTime || 0)}
+            </Text>
             <Text style={styles.statLabel}>Total Time</Text>
           </View>
           <View style={styles.statCard}>
             <Target size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{stats.totalSessions}</Text>
+            <Text style={styles.statValue}>
+              {stats?.sessionsCompleted || 0}
+            </Text>
             <Text style={styles.statLabel}>Sessions</Text>
           </View>
           <View style={styles.statCard}>
             <BookOpen size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{stats.activeTopics}</Text>
+            <Text style={styles.statValue}>
+              {stats?.topicsProgress?.explored?.length || 0}
+            </Text>
             <Text style={styles.statLabel}>Topics</Text>
           </View>
           <View style={styles.statCard}>
             <Trophy size={24} color={theme.colors.primary} />
-            <Text style={styles.statValue}>{stats.achievements}</Text>
-            <Text style={styles.statLabel}>Achievements</Text>
+            <Text style={styles.statValue}>
+              {stats?.learningStreaks?.longest || 0}
+            </Text>
+            <Text style={styles.statLabel}>Best Streak</Text>
           </View>
         </View>
       </View>
@@ -146,62 +141,56 @@ export default function StatsScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Learning Trends</Text>
           <TouchableOpacity style={styles.periodSelector}>
-            <Text style={styles.periodText}>This Month</Text>
+            <Text style={styles.periodText}>This Week</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.trendsCard}>
           <View style={styles.trendItem}>
             <View style={styles.trendHeader}>
               <TrendingUp size={20} color={theme.colors.status.success} />
-              <Text style={styles.trendValue}>+15%</Text>
+              <Text style={styles.trendValue}>
+                {formatDuration(
+                  stats?.weeklyProgress?.timeSpent?.[new Date().getDay()] || 0
+                )}
+              </Text>
             </View>
-            <Text style={styles.trendLabel}>Learning Time</Text>
+            <Text style={styles.trendLabel}>Today's Learning</Text>
           </View>
           <View style={styles.trendItem}>
             <View style={styles.trendHeader}>
               <TrendingUp size={20} color={theme.colors.status.success} />
-              <Text style={styles.trendValue}>+3</Text>
+              <Text style={styles.trendValue}>
+                {stats?.topicsProgress?.recentlyActive?.length || 0}
+              </Text>
             </View>
-            <Text style={styles.trendLabel}>New Topics</Text>
+            <Text style={styles.trendLabel}>Active Topics</Text>
           </View>
         </View>
       </View>
 
       {/* Topic History */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Topic History</Text>
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Search size={20} color={theme.colors.text.secondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search topics..."
-              placeholderTextColor={theme.colors.text.secondary}
-            />
-          </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <Filter size={20} color={theme.colors.text.secondary} />
-          </TouchableOpacity>
-        </View>
-
+        <Text style={styles.sectionTitle}>Recent Topics</Text>
         <View style={styles.topicList}>
-          {sampleTopics.map((topic) => (
-            <View key={topic.id} style={styles.topicCard}>
+          {stats?.topicsProgress?.explored?.slice(0, 3)?.map((topic) => (
+            <View key={topic.topicId} style={styles.topicCard}>
               <View style={styles.topicHeader}>
                 <View style={styles.topicInfo}>
-                  <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-                  <Text style={styles.topicName}>{topic.name}</Text>
+                  <Text style={styles.topicName}>{topic.topicName}</Text>
                 </View>
                 <View style={styles.topicStats}>
                   <Clock size={14} color={theme.colors.text.secondary} />
                   <Text style={styles.topicStatText}>
-                    {topic.stats.totalTimeSpent}m
+                    {formatDuration(topic.timeSpent)}
                   </Text>
                 </View>
               </View>
               <View style={styles.topicFooter}>
                 <Text style={styles.lastStudied}>
-                  Last studied: {topic.stats.lastStudied}
+                  Last studied:{" "}
+                  {formatDate(
+                    new Date(topic.lastAccessed.seconds * 1000).toISOString()
+                  )}
                 </Text>
               </View>
             </View>
