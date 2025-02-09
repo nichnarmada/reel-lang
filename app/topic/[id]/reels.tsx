@@ -24,6 +24,7 @@ import {
 } from "../../../utils/pexels"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { ErrorMessage } from "../../../components/ErrorMessage"
+import { LoadingOverlay } from "../../../components/LoadingOverlay"
 import {
   getCollection,
   getDocument,
@@ -33,6 +34,8 @@ import { useAuth } from "../../../contexts/auth"
 import { SAMPLE_QUESTIONS } from "../../../constants/quiz"
 import { Timestamp } from "@react-native-firebase/firestore"
 import { useLearningSession } from "../../../hooks/useLearningSession"
+import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
+import { Session } from "../../../types/session"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT
@@ -67,6 +70,14 @@ export default function ReelsScreen() {
   const initialScrollDone = useRef(false)
   const { user } = useAuth()
   const { pauseSession } = useLearningSession(user?.uid || "")
+
+  // Add loading state for quiz generation
+  const [quizLoading, setQuizLoading] = useState({
+    show: false,
+    message: "",
+    step: 0,
+    totalSteps: 3,
+  })
 
   // Handle back button and screen exit
   const handleExit = useCallback(async () => {
@@ -163,7 +174,6 @@ export default function ReelsScreen() {
     // Ensure topicId and sessionId are strings
     const currentTopicId = Array.isArray(topicId) ? topicId[0] : topicId
     const currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
-    const currentTopicName = Array.isArray(topicName) ? topicName[0] : topicName
 
     try {
       // Update session status to completed
@@ -176,34 +186,17 @@ export default function ReelsScreen() {
         completedAt: Timestamp.now(),
       })
 
-      // Create quiz document
-      const quizzesCollection = getCollection(FIREBASE_COLLECTIONS.QUIZZES)
-      const quizRef = quizzesCollection.doc()
-
-      // Format questions to match our Question type
-      const formattedQuestions = SAMPLE_QUESTIONS.map((question) => ({
-        question: question.question,
-        options: question.options,
-        correctAnswer: question.options[question.correctAnswer], // Convert index to actual answer
-        explanation: "This answer was chosen based on the video content", // Placeholder explanation
-        topicId: currentTopicId,
-        videoReference: videos[0]?.id || "", // Reference first video if available
-      }))
-
-      const quizData = {
-        id: quizRef.id,
-        sessionId: currentSessionId,
-        userId: user.uid,
-        questions: formattedQuestions,
-        userResponses: [],
-        metadata: {
-          generatedAt: Timestamp.now(),
-          difficulty: "beginner", // TODO: Make this dynamic based on user's level
-          topics: [currentTopicId],
-        },
+      // Get the session data
+      const sessionSnapshot = await sessionDoc.get()
+      if (!sessionSnapshot.exists) {
+        throw new Error("Session not found")
       }
 
-      await quizRef.set(quizData)
+      const sessionData = sessionSnapshot.data()
+      const session: Session = {
+        ...sessionData,
+        id: currentSessionId,
+      } as Session
 
       Alert.alert(
         "Time's Up!",
@@ -211,14 +204,49 @@ export default function ReelsScreen() {
         [
           {
             text: "Take Quiz",
-            onPress: () => {
-              router.replace({
-                pathname: "/quiz/[sessionId]" as const,
-                params: {
-                  sessionId: currentSessionId,
-                  quizId: quizRef.id,
-                },
-              })
+            onPress: async () => {
+              try {
+                // Start loading with first step
+                setQuizLoading({
+                  show: true,
+                  message: "Analyzing your learning session...",
+                  step: 1,
+                  totalSteps: 3,
+                })
+
+                // Simulate a small delay for UX
+                await new Promise((resolve) => setTimeout(resolve, 1000))
+
+                // Update to second step
+                setQuizLoading((prev) => ({
+                  ...prev,
+                  message: "Generating personalized questions...",
+                  step: 2,
+                }))
+
+                // Generate the quiz
+                await startQuizAfterSession(session)
+
+                // Final step before navigation
+                setQuizLoading((prev) => ({
+                  ...prev,
+                  message: "Preparing your quiz experience...",
+                  step: 3,
+                }))
+
+                // Small delay to show the final step
+                await new Promise((resolve) => setTimeout(resolve, 500))
+
+                // Hide loading
+                setQuizLoading((prev) => ({ ...prev, show: false }))
+              } catch (error) {
+                setQuizLoading((prev) => ({ ...prev, show: false }))
+                console.error("Error generating quiz:", error)
+                Alert.alert(
+                  "Error",
+                  "Failed to generate quiz. Please try again."
+                )
+              }
             },
           },
         ],
@@ -231,7 +259,7 @@ export default function ReelsScreen() {
         "There was an error ending your session. Please try again."
       )
     }
-  }, [topicId, sessionId, topicName, duration, videos.length, user])
+  }, [topicId, sessionId, user])
 
   useEffect(() => {
     async function loadVideos() {
@@ -398,6 +426,15 @@ export default function ReelsScreen() {
             autoscrollToTopThreshold: 10,
           }}
         />
+
+        {quizLoading.show && (
+          <LoadingOverlay
+            variant="overlay"
+            message={`${quizLoading.message} (${quizLoading.step}/${quizLoading.totalSteps})`}
+            size="large"
+            isTransparent={false}
+          />
+        )}
       </View>
     </>
   )

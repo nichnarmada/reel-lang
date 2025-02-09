@@ -15,10 +15,15 @@ import {
   getDocument,
   FIREBASE_COLLECTIONS,
 } from "../../../utils/firebase/config"
-import { Question } from "../../../types/quiz"
+import { Question, Quiz } from "../../../types/quiz"
 
 export default function QuizScreen() {
-  const { sessionId, quizId } = useLocalSearchParams()
+  const params = useLocalSearchParams()
+  const { sessionId, quizId } = params
+
+  console.log("Quiz screen mounted with params:", params)
+  console.log("Parsed params:", { sessionId, quizId })
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,10 +32,12 @@ export default function QuizScreen() {
     Record<string, string>
   >({})
   const [startTimes, setStartTimes] = useState<Record<string, number>>({})
+  const [quizData, setQuizData] = useState<Quiz | null>(null)
 
   useEffect(() => {
     const loadQuiz = async () => {
       try {
+        console.log("Loading quiz with ID:", quizId)
         const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
         const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
         const quizSnapshot = await quizDoc.get()
@@ -39,13 +46,23 @@ export default function QuizScreen() {
           throw new Error("Quiz not found")
         }
 
-        const quizData = quizSnapshot.data()
-        setQuestions(quizData?.questions || [])
+        const quiz = quizSnapshot.data() as Quiz
+        console.log("Loaded quiz data:", {
+          id: quiz.id,
+          numberOfQuestions: quiz.questions?.length,
+          topics: quiz.metadata?.topics,
+          sessionId: quiz.sessionId,
+        })
+
+        setQuizData(quiz)
+        setQuestions(quiz.questions || [])
 
         // Set start time for first question
-        setStartTimes({
-          [quizData?.questions[0]?.question]: Date.now(),
-        })
+        if (quiz.questions && quiz.questions.length > 0) {
+          setStartTimes({
+            [quiz.questions[0].question]: Date.now(),
+          })
+        }
       } catch (err) {
         console.error("Error loading quiz:", err)
         setError("Failed to load quiz questions")
@@ -59,9 +76,7 @@ export default function QuizScreen() {
 
   const currentQuestion = questions[currentQuestionIndex]
   const progress =
-    questions.length > 0
-      ? ((currentQuestionIndex + 1) / questions.length) * 100
-      : 0
+    questions.length > 0 ? (currentQuestionIndex / questions.length) * 100 : 0
 
   const handleSelectOption = async (
     questionId: string,
@@ -117,6 +132,7 @@ export default function QuizScreen() {
           params: {
             sessionId: currentSessionId,
             score: correctAnswers.toString(),
+            totalQuestions: questions.length.toString(),
             quizId: currentQuizId,
           },
         })
@@ -160,7 +176,9 @@ export default function QuizScreen() {
           >
             <ChevronLeft size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Session Quiz</Text>
+          <Text style={styles.headerTitle}>
+            {quizData?.metadata?.topics?.[0] || "Session"} Quiz
+          </Text>
         </View>
 
         {/* Progress Bar */}
