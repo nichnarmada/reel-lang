@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import {
   View,
   Text,
@@ -15,14 +15,53 @@ import {
   RotateCcw,
   Play,
 } from "lucide-react-native"
+import {
+  getDocument,
+  FIREBASE_COLLECTIONS,
+} from "../../../utils/firebase/config"
+import { Quiz } from "../../../types/quiz"
+import { LoadingSpinner } from "../../../components/LoadingSpinner"
+import { ErrorMessage } from "../../../components/ErrorMessage"
 
 export default function QuizResultsScreen() {
-  const { sessionId, score } = useLocalSearchParams()
+  const { sessionId, score, quizId, totalQuestions } = useLocalSearchParams()
+  const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   const currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
   const currentScore = Array.isArray(score) ? score[0] : score
-  const totalQuestions = 3 // This should match the total questions in your quiz
+  const total = Array.isArray(totalQuestions)
+    ? totalQuestions[0]
+    : totalQuestions
   const scoreNum = parseInt(currentScore as string, 10)
-  const percentage = (scoreNum / totalQuestions) * 100
+  const totalNum = parseInt(total as string, 10)
+  const percentage = (scoreNum / totalNum) * 100
+
+  useEffect(() => {
+    const loadQuizDetails = async () => {
+      try {
+        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
+        if (!currentQuizId) return
+
+        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
+        const quizSnapshot = await quizDoc.get()
+
+        if (!quizSnapshot.exists) {
+          throw new Error("Quiz not found")
+        }
+
+        setQuiz(quizSnapshot.data() as Quiz)
+      } catch (err) {
+        console.error("Error loading quiz details:", err)
+        setError("Failed to load quiz details")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadQuizDetails()
+  }, [quizId])
 
   const getFeedback = () => {
     if (percentage >= 80) return "Excellent! You've mastered this topic!"
@@ -45,16 +84,36 @@ export default function QuizResultsScreen() {
     // Navigate back to quiz
     router.replace({
       pathname: "/quiz/[sessionId]" as const,
-      params: { sessionId: currentSessionId },
+      params: {
+        sessionId: currentSessionId,
+        quizId: Array.isArray(quizId) ? quizId[0] : quizId,
+      },
     })
   }
 
   const handleContinueLearning = () => {
-    // Navigate back to topic
+    // Navigate to quiz review
     router.replace({
-      pathname: "/topic/[id]" as const,
-      params: { id: currentSessionId },
+      pathname: "/quiz-history/[quizId]" as const,
+      params: { quizId: Array.isArray(quizId) ? quizId[0] : quizId },
     })
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <LoadingSpinner />
+        <Text style={styles.loadingText}>Loading results...</Text>
+      </View>
+    )
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <ErrorMessage message={error} />
+      </View>
+    )
   }
 
   return (
@@ -80,6 +139,11 @@ export default function QuizResultsScreen() {
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
         >
+          {/* Topic Name */}
+          {quiz && (
+            <Text style={styles.topicName}>{quiz.metadata.topics[0]}</Text>
+          )}
+
           {/* Trophy Icon */}
           <View style={styles.trophyContainer}>
             <Trophy size={64} color={getScoreColor()} />
@@ -88,7 +152,7 @@ export default function QuizResultsScreen() {
           {/* Score Display */}
           <View style={styles.scoreContainer}>
             <Text style={[styles.scoreText, { color: getScoreColor() }]}>
-              {scoreNum}/{totalQuestions}
+              {scoreNum}/{totalNum}
             </Text>
             <Text style={styles.percentageText}>
               {Math.round(percentage)}% Correct
@@ -114,10 +178,10 @@ export default function QuizResultsScreen() {
           {/* Continue Learning Button */}
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => router.replace("/stats")}
+            onPress={handleContinueLearning}
           >
             <Play size={20} color="#fff" />
-            <Text style={styles.continueButtonText}>View Quiz History</Text>
+            <Text style={styles.continueButtonText}>Review Answers</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -155,6 +219,13 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: Platform.OS === "ios" ? 40 : 24,
     alignItems: "center",
+  },
+  topicName: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 24,
   },
   trophyContainer: {
     marginVertical: 32,
@@ -217,5 +288,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
   },
 })

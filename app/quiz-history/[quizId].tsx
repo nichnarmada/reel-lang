@@ -26,7 +26,6 @@ export default function QuizDetailScreen() {
   const [quiz, setQuiz] = useState<QuizWithTopic | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showIncorrectOnly, setShowIncorrectOnly] = useState(false)
 
   useEffect(() => {
     const loadQuiz = async () => {
@@ -140,10 +139,6 @@ export default function QuizDetailScreen() {
   const percentage = (correctAnswers / totalQuestions) * 100
   const date = new Date(quiz.metadata.generatedAt.seconds * 1000)
 
-  const questionsToShow = quiz.questions.filter((_, index) =>
-    showIncorrectOnly ? !quiz.userResponses[index].isCorrect : true
-  )
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -179,21 +174,9 @@ export default function QuizDetailScreen() {
           </View>
         </View>
 
-        {/* Filter Toggle */}
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowIncorrectOnly(!showIncorrectOnly)}
-        >
-          <Text style={styles.filterButtonText}>
-            {showIncorrectOnly
-              ? "Show All Questions"
-              : "Show Incorrect Answers Only"}
-          </Text>
-        </TouchableOpacity>
-
         {/* Questions */}
         <View style={styles.questionsContainer}>
-          {questionsToShow.map((question, index) =>
+          {quiz.questions.map((question, index) =>
             renderQuestion(question, quiz.userResponses[index], index)
           )}
         </View>
