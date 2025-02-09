@@ -1,4 +1,6 @@
-# User Stories
+# DiscoverAI User Stories
+
+User stories for DiscoverAI - an intelligent learning platform that adapts to each user's interests and learning style through AI-powered content discovery, interactive quizzes, and personalized recommendations.
 
 ## Week 1
 

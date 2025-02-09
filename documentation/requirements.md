@@ -1,4 +1,6 @@
-# Requirements
+# DiscoverAI Requirements
+
+DiscoverAI is an AI-powered learning platform that helps users discover and learn new topics through short-form videos, interactive quizzes, and personalized content recommendations.
 
 ## Week 1: Core Implementation
 

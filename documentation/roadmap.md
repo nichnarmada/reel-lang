@@ -1,4 +1,6 @@
-# Development Roadmap
+# DiscoverAI Development Roadmap
+
+Development roadmap for DiscoverAI - an AI-powered learning platform that personalizes the learning experience through short-form videos, interactive quizzes, and smart content recommendations.
 
 ## Development Phases
 
