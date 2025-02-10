@@ -1,122 +1,227 @@
 import { Timestamp } from "@react-native-firebase/firestore"
 import { GeneratedTopic } from "../../types/topic"
-import { Question, Quiz, QuizMetadata } from "../../types/quiz"
+import {
+  Question,
+  Quiz,
+  QuizMetadata,
+  UserProgress,
+  QuizRequirements,
+  QuestionGenerationStrategy,
+  getQuizRequirements,
+  getGenerationStrategy,
+} from "../../types/quiz"
 import { topicSuggestionModel } from "../../utils/gemini/config"
 import { firestore } from "../../utils/firebase/config"
 import { doc, setDoc } from "@react-native-firebase/firestore"
+import { DifficultyLevel } from "../../types"
+import { GeneratedContent, EducationalConcept } from "../content/types"
 
-const buildQuizPrompt = (
-  topic: GeneratedTopic,
-  difficulty: "beginner" | "intermediate" | "advanced"
-): string => {
-  return `Generate quiz questions for the following topic:
-Topic: ${topic.name}
-Description: ${topic.description}
-Difficulty Level: ${difficulty}
-Key Terms: ${topic.searchTerms.join(", ")}
-
-Please generate questions in the following JSON format:
-[
-  {
-    "question": "Question text here?",
-    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-    "correctAnswer": "Option 1",
-    "explanation": "Brief explanation of why this is correct"
-  }
-]
-
-Requirements:
-1. Generate 5 multiple-choice questions
-2. Each question should have exactly 4 options
-3. Questions should match the specified difficulty level
-4. Include clear, concise explanations
-5. Ensure all options are plausible
-6. Format as a valid JSON array
-7. Questions should test understanding, not just memorization
-8. Include a mix of concept-based and application-based questions
-9. The correctAnswer MUST be exactly one of the options provided
-
-Return only the JSON array, no additional text or formatting.`
-}
-
-interface QuizGenerationResult {
-  success: boolean
-  error?: string
-  questions: Question[]
-}
-
-const processQuizResponse = async (
-  response: string,
-  topicId: string
+const generateConceptQuestions = async (
+  concept: EducationalConcept,
+  difficulty: DifficultyLevel
 ): Promise<Question[]> => {
+  const prompt = `Generate a multiple choice question about:
+Concept: ${concept.name}
+Description: ${concept.description}
+Key Points: ${concept.keyPoints.join(", ")}
+Difficulty: ${difficulty}
+
+The question should test deep understanding of the concept.
+Return in JSON format:
+  {
+  "question": "Question text here",
+    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+  "correctAnswer": "Correct option here",
+  "explanation": "Why this is the correct answer"
+}`
+
+  console.log("Generating concept question with prompt:", {
+    conceptName: concept.name,
+    description: concept.description,
+    keyPoints: concept.keyPoints,
+    difficulty,
+  })
+
   try {
-    const cleanedResponse = response
+    const response = await topicSuggestionModel.generateContent(prompt)
+    const cleanedResponse = response.response
+      .text()
       .trim()
       .replace(/```json\s*/g, "")
       .replace(/```\s*/g, "")
       .replace(/,(\s*[\]}])/g, "$1")
 
-    const parsed = JSON.parse(cleanedResponse)
+    try {
+      const parsed = JSON.parse(cleanedResponse)
+      console.log("Generated concept question response:", cleanedResponse)
 
-    if (!Array.isArray(parsed)) {
-      console.warn("AI response is not an array:", parsed)
+      return [
+        {
+          id: `q_${Date.now()}_${concept.id}`,
+          ...parsed,
+          segmentType: concept.segmentType,
+          conceptId: concept.id,
+        },
+      ]
+    } catch (parseError) {
+      console.error("Failed to parse concept question JSON:", cleanedResponse)
       return []
     }
-
-    // Validate and format each question
-    return parsed.map((item: any) => {
-      // Ensure correctAnswer is one of the options
-      if (!item.options.includes(item.correctAnswer)) {
-        console.warn("Correct answer not in options:", item)
-        // Use the first option as fallback
-        item.correctAnswer = item.options[0]
-      }
-
-      return {
-        question: item.question,
-        options: item.options,
-        correctAnswer: item.correctAnswer,
-        explanation: item.explanation,
-        topicId,
-        videoReference: "", // Empty for now since we're not using videos yet
-      }
-    })
   } catch (error) {
-    console.error("Error processing quiz response:", error)
-    console.error("Raw response:", response)
+    console.error("Error generating concept questions:", error)
     return []
   }
 }
 
-const generateQuizQuestions = async (
-  topic: GeneratedTopic,
-  difficulty: "beginner" | "intermediate" | "advanced"
-): Promise<QuizGenerationResult> => {
+const generateKeyPointQuestions = async (
+  concept: EducationalConcept,
+  difficulty: DifficultyLevel
+): Promise<Question[]> => {
+  console.log("Generating key point question for concept:", {
+    conceptName: concept.name,
+    keyPoints: concept.keyPoints,
+    examples: concept.examples,
+    difficulty,
+  })
+
+  const prompt = `Generate a multiple choice question about ${concept.name}.
+
+Use these key points:
+${concept.keyPoints.map((point) => `- ${point}`).join("\n")}
+
+Examples for context:
+${concept.examples.map((ex) => `- ${ex}`).join("\n")}
+
+Difficulty level: ${difficulty}
+
+Requirements:
+1. Question should test understanding of the key points
+2. All options should be plausible but only one correct
+3. Explanation should reference the key points
+4. Match the ${difficulty} difficulty level
+
+Return a JSON object with this exact structure (no markdown, no backticks):
+{
+  "question": "Clear question text here",
+  "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+  "correctAnswer": "Exact text of the correct option",
+  "explanation": "Clear explanation why this is correct"
+}`
+
   try {
-    const prompt = buildQuizPrompt(topic, difficulty)
-    const result = await topicSuggestionModel.generateContent(prompt)
-    const response = result.response.text()
-    const questions = await processQuizResponse(response, topic.name)
+    const response = await topicSuggestionModel.generateContent(prompt)
+    const cleanedResponse = response.response
+      .text()
+      .trim()
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .replace(/,(\s*[\]}])/g, "$1")
 
-    if (questions.length === 0) {
-      return {
-        success: false,
-        error: "No questions were generated",
-        questions: [],
+    console.log("Generated key point question response:", cleanedResponse)
+
+    try {
+      const parsed = JSON.parse(cleanedResponse)
+
+      // Validate the parsed response has all required fields
+      if (
+        !parsed.question ||
+        !parsed.options ||
+        !parsed.correctAnswer ||
+        !parsed.explanation
+      ) {
+        console.error("Invalid key point question format:", parsed)
+        return []
       }
-    }
 
-    return {
-      success: true,
-      questions,
+      // Validate correctAnswer is one of the options
+      if (!parsed.options.includes(parsed.correctAnswer)) {
+        console.error(
+          "Key point question correct answer not in options:",
+          parsed
+        )
+        return []
+      }
+
+      return [
+        {
+          id: `q_${Date.now()}_${concept.id}`,
+          ...parsed,
+          segmentType: concept.segmentType,
+          conceptId: concept.id,
+        },
+      ]
+    } catch (parseError) {
+      console.error("Failed to parse key point question JSON:", cleanedResponse)
+      return []
     }
   } catch (error) {
-    console.error(`Error generating quiz for topic ${topic.name}:`, error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-      questions: [],
+    console.error("Error generating key point questions:", error)
+    return []
+  }
+}
+
+const generateRecapQuestions = async (
+  concept: EducationalConcept,
+  allConcepts: EducationalConcept[],
+  difficulty: DifficultyLevel
+): Promise<Question[]> => {
+  const relatedConcepts = allConcepts
+    .filter((c) => c.id !== concept.id)
+    .map((c) => ({
+      name: c.name,
+      keyPoints: c.keyPoints,
+    }))
+
+  console.log("Generating recap question for concept:", {
+    mainConcept: concept.name,
+    keyPoints: concept.keyPoints,
+    relatedConcepts: relatedConcepts.map((c) => c.name),
+    difficulty,
+  })
+
+  const prompt = `Generate a multiple choice question that connects:
+Main Concept: ${concept.name}
+Key Points: ${concept.keyPoints.join(", ")}
+Related Concepts: ${JSON.stringify(relatedConcepts)}
+Difficulty: ${difficulty}
+
+The question should test understanding of relationships between concepts.
+Return in JSON format:
+{
+  "question": "Question text here",
+  "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+  "correctAnswer": "Correct option here",
+  "explanation": "Why this is the correct answer"
+}`
+
+  try {
+    const response = await topicSuggestionModel.generateContent(prompt)
+    const cleanedResponse = response.response
+      .text()
+      .trim()
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .replace(/,(\s*[\]}])/g, "$1")
+
+    console.log("Generated recap question response:", cleanedResponse)
+
+    try {
+      const parsed = JSON.parse(cleanedResponse)
+      return [
+        {
+          id: `q_${Date.now()}_${concept.id}`,
+          ...parsed,
+          segmentType: concept.segmentType,
+          conceptId: concept.id,
+        },
+      ]
+    } catch (parseError) {
+      console.error("Failed to parse recap question JSON:", cleanedResponse)
+      return []
     }
+  } catch (error) {
+    console.error("Error generating recap questions:", error)
+    return []
   }
 }
 
@@ -124,20 +229,182 @@ export const createQuiz = async (
   userId: string,
   sessionId: string,
   topic: GeneratedTopic,
-  difficulty: "beginner" | "intermediate" | "advanced"
+  content: GeneratedContent,
+  userProgress: UserProgress
 ): Promise<Quiz | null> => {
   try {
-    const { success, questions, error } = await generateQuizQuestions(
-      topic,
-      difficulty
-    )
+    const questions: Question[] = []
+    const difficulty = content.metadata.difficulty
+    const duration = content.metadata.sessionDuration
+    const requirements = getQuizRequirements(duration)
+    const strategy = getGenerationStrategy(duration)
 
-    if (!success || questions.length === 0) {
-      console.error("Failed to generate quiz:", error)
-      return null
+    console.log("Starting quiz generation with content:", {
+      concepts: content.structure.concepts.length,
+      difficulty,
+      duration,
+      requirements,
+      strategy,
+      topicName: topic.name,
+      conceptTypes: content.structure.concepts.map((c) => ({
+        name: c.name,
+        type: c.segmentType,
+        keyPointsCount: c.keyPoints.length,
+        examplesCount: c.examples.length,
+      })),
+    })
+
+    // Generate questions based on segment types and strategy
+    for (const concept of content.structure.concepts) {
+      console.log(`\nProcessing concept: ${concept.name}`)
+      console.log("Concept details:", {
+        type: concept.segmentType,
+        keyPoints: concept.keyPoints,
+        examples: concept.examples,
+        description: concept.description,
+        targetQuestions: strategy[concept.segmentType],
+      })
+
+      let conceptQuestions: Question[] = []
+      const targetQuestionCount = strategy[concept.segmentType]
+
+      // Skip if strategy indicates 0 questions for this type
+      if (targetQuestionCount === 0) {
+        console.log(`Skipping ${concept.segmentType} concept as per strategy`)
+        continue
+      }
+
+      // Generate questions based on segment type
+      for (let i = 0; i < targetQuestionCount; i++) {
+        let questionBatch: Question[] = []
+
+        switch (concept.segmentType) {
+          case "core":
+            console.log(
+              `Generating core concept question ${
+                i + 1
+              }/${targetQuestionCount}...`
+            )
+            questionBatch = await generateConceptQuestions(concept, difficulty)
+            break
+          case "quick":
+            console.log(
+              `Generating quick key point question ${
+                i + 1
+              }/${targetQuestionCount}...`
+            )
+            questionBatch = await generateKeyPointQuestions(concept, difficulty)
+            break
+          case "recap":
+            console.log(
+              `Generating recap question ${i + 1}/${targetQuestionCount}...`
+            )
+            questionBatch = await generateRecapQuestions(
+              concept,
+              content.structure.concepts,
+              difficulty
+            )
+            break
+        }
+
+        // Take one question from the batch
+        if (questionBatch.length > 0) {
+          conceptQuestions.push(questionBatch[0])
+        }
+      }
+
+      console.log(
+        `Generated ${conceptQuestions.length}/${targetQuestionCount} questions for concept: ${concept.name}`
+      )
+      if (conceptQuestions.length === 0) {
+        console.log(
+          "Warning: No questions generated for this concept. Response may be malformed."
+        )
+      }
+      questions.push(...conceptQuestions)
     }
 
-    const quizId = `quiz_${Date.now()}`
+    console.log("\nQuiz generation summary:", {
+      totalQuestions: questions.length,
+      questionsByType: questions.reduce((acc, q) => {
+        acc[q.segmentType || "unknown"] =
+          (acc[q.segmentType || "unknown"] || 0) + 1
+        return acc
+      }, {} as Record<string, number>),
+      minRequired: requirements.minQuestions,
+      maxAllowed: requirements.maxQuestions,
+    })
+
+    // Check if we have enough questions
+    if (questions.length < requirements.minQuestions) {
+      console.log(
+        `\nAttempting to generate additional questions to meet minimum requirement of ${requirements.minQuestions}...`
+      )
+
+      // Try to generate more questions from concepts that successfully generated questions before
+      const successfulConcepts = content.structure.concepts.filter(
+        (concept) => {
+          const existingQuestions = questions.filter(
+            (q) => q.conceptId === concept.id
+          )
+          return existingQuestions.length > 0
+        }
+      )
+
+      for (const concept of successfulConcepts) {
+        if (questions.length >= requirements.minQuestions) break
+
+        console.log(
+          `Generating additional question for concept: ${concept.name}`
+        )
+
+        let additionalQuestions: Question[] = []
+        switch (concept.segmentType) {
+          case "core":
+            additionalQuestions = await generateConceptQuestions(
+              concept,
+              difficulty
+            )
+            break
+          case "quick":
+            additionalQuestions = await generateKeyPointQuestions(
+              concept,
+              difficulty
+            )
+            break
+          case "recap":
+            additionalQuestions = await generateRecapQuestions(
+              concept,
+              content.structure.concepts,
+              difficulty
+            )
+            break
+        }
+
+        if (additionalQuestions.length > 0) {
+          questions.push(additionalQuestions[0])
+          console.log("Successfully generated additional question")
+        }
+      }
+    }
+
+    // If we still don't have enough questions, log error but continue
+    if (questions.length < requirements.minQuestions) {
+      console.error("Warning: Could not generate minimum required questions:", {
+        generated: questions.length,
+        required: requirements.minQuestions,
+      })
+    }
+
+    // Trim excess questions if we generated too many
+    if (questions.length > requirements.maxQuestions) {
+      console.log(
+        `Trimming excess questions to maximum of ${requirements.maxQuestions}`
+      )
+      questions.length = requirements.maxQuestions
+    }
+
+    const quizId = `${sessionId}_quiz`
     const quiz: Quiz = {
       id: quizId,
       sessionId,
@@ -148,16 +415,18 @@ export const createQuiz = async (
         generatedAt: Timestamp.now(),
         difficulty,
         topics: [topic.name],
+        segmentBreakdown: {
+          core: questions.filter((q) => q.segmentType === "core").length,
+          quick: questions.filter((q) => q.segmentType === "quick").length,
+          recap: questions.filter((q) => q.segmentType === "recap").length,
+        },
+        userProgress,
       },
     }
 
-    // Store the quiz in Firestore
-    const quizRef = doc(firestore, "quizzes", quizId)
-    await setDoc(quizRef, quiz)
-
     return quiz
   } catch (error) {
-    console.error("Error creating quiz:", error)
-    return null
+    console.error("Error in createQuiz:", error)
+    throw error
   }
 }

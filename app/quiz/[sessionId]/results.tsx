@@ -19,6 +19,8 @@ import {
 import {
   getDocument,
   FIREBASE_COLLECTIONS,
+  getSessionSubcollectionDoc,
+  FIREBASE_SUBCOLLECTIONS,
 } from "../../../utils/firebase/config"
 import { Quiz } from "../../../types/quiz"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
@@ -52,11 +54,15 @@ export default function QuizResultsScreen() {
   useEffect(() => {
     const loadQuizDetails = async () => {
       try {
-        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
-        if (!currentQuizId) return
+        if (!currentSessionId) return
 
-        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
-        const quizSnapshot = await quizDoc.get()
+        // Get quiz from session's subcollection
+        const quizRef = getSessionSubcollectionDoc(
+          currentSessionId,
+          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
+          "questions"
+        )
+        const quizSnapshot = await quizRef.get()
 
         if (!quizSnapshot.exists) {
           throw new Error("Quiz not found")
@@ -72,7 +78,7 @@ export default function QuizResultsScreen() {
     }
 
     loadQuizDetails()
-  }, [quizId])
+  }, [currentSessionId])
 
   const getFeedback = () => {
     if (percentage >= 80) return "Excellent! You've mastered this topic!"
@@ -126,7 +132,12 @@ export default function QuizResultsScreen() {
       }))
 
       // Generate the quiz
-      await startQuizAfterSession(session)
+      const userProgress = {
+        videosWatched: 0, // Reset for new quiz
+        timeSpentSeconds: 0,
+        completedSegments: [],
+      }
+      await startQuizAfterSession(session, userProgress)
 
       // Final step before navigation
       setGeneratingQuiz((prev) => ({
@@ -157,10 +168,15 @@ export default function QuizResultsScreen() {
   }
 
   const handleContinueLearning = () => {
-    // Navigate to quiz review
+    // Navigate to quiz history/review screen
     router.replace({
       pathname: "/quiz-history/[quizId]" as const,
-      params: { quizId: Array.isArray(quizId) ? quizId[0] : quizId },
+      params: {
+        quizId: `${currentSessionId}_quiz`, // This matches our quiz ID format
+        sessionId: currentSessionId,
+        score: currentScore,
+        totalQuestions: total,
+      },
     })
   }
 

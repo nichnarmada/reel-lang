@@ -23,6 +23,12 @@ export const FIREBASE_SUBCOLLECTIONS = {
   USER: {
     GENERATED_TOPICS: "generatedTopics", // users/{userId}/generatedTopics
   },
+  // Subcollections under sessions
+  SESSION: {
+    CONTENT: "content", // sessions/{sessionId}/content
+    SCRIPTS: "scripts", // sessions/{sessionId}/scripts
+    QUIZ: "quiz", // sessions/{sessionId}/quiz
+  },
 } as const
 
 // Type for collection names to ensure type safety
@@ -32,6 +38,9 @@ export type FirebaseCollection =
 // Type for subcollection names
 export type UserSubcollection =
   (typeof FIREBASE_SUBCOLLECTIONS.USER)[keyof typeof FIREBASE_SUBCOLLECTIONS.USER]
+
+export type SessionSubcollection =
+  (typeof FIREBASE_SUBCOLLECTIONS.SESSION)[keyof typeof FIREBASE_SUBCOLLECTIONS.SESSION]
 
 // Get Firebase instances
 const auth = getAuth()
@@ -52,6 +61,14 @@ export const getUserSubcollectionDoc = (
   subcollection: UserSubcollection,
   docId: string
 ) => doc(firestore, FIREBASE_COLLECTIONS.USERS, userId, subcollection, docId)
+
+// Helper for getting a document from a session's subcollection
+export const getSessionSubcollectionDoc = (
+  sessionId: string,
+  subcollection: SessionSubcollection,
+  docId: string
+) =>
+  doc(firestore, FIREBASE_COLLECTIONS.SESSIONS, sessionId, subcollection, docId)
 
 // Export configured instances and helpers
 export { auth, firestore, collection, doc, getDocs, setDoc }

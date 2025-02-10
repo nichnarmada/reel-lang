@@ -36,6 +36,9 @@ import { Timestamp } from "@react-native-firebase/firestore"
 import { useLearningSession } from "../../../hooks/useLearningSession"
 import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
 import { Session } from "../../../types/session"
+import { getContentForSession } from "../../../services/content/contentFlow"
+import { GeneratedContent } from "../../../services/content/types"
+import { UserProgress } from "../../../types/quiz"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT
@@ -54,6 +57,7 @@ export default function ReelsScreen() {
     topicName,
     duration,
     sessionId,
+    contentId,
     isResumed,
     lastVideoId,
     lastVideoTimestamp,
@@ -70,6 +74,8 @@ export default function ReelsScreen() {
   const initialScrollDone = useRef(false)
   const { user } = useAuth()
   const { pauseSession } = useLearningSession(user?.uid || "")
+  const [generatedContent, setGeneratedContent] =
+    useState<GeneratedContent | null>(null)
 
   // Add loading state for quiz generation
   const [quizLoading, setQuizLoading] = useState({
@@ -78,6 +84,13 @@ export default function ReelsScreen() {
     step: 0,
     totalSteps: 3,
   })
+
+  // Add state to track session and quiz status
+  const [sessionEnded, setSessionEnded] = useState(false)
+  const [quizStarted, setQuizStarted] = useState(false)
+
+  // Track session start time
+  const [sessionStartTime] = useState(Date.now())
 
   // Handle back button and screen exit
   const handleExit = useCallback(async () => {
@@ -133,9 +146,6 @@ export default function ReelsScreen() {
     pauseSession,
   ])
 
-  // Track session start time
-  const [sessionStartTime] = useState(Date.now())
-
   // Handle hardware back button (Android)
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
@@ -169,13 +179,23 @@ export default function ReelsScreen() {
   }, [])
 
   const handleSessionEnd = useCallback(async () => {
-    if (!user) return
-
-    // Ensure topicId and sessionId are strings
-    const currentTopicId = Array.isArray(topicId) ? topicId[0] : topicId
-    const currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
+    // Prevent multiple triggers if session already ended or quiz already started
+    if (!user || sessionEnded || quizStarted) return
 
     try {
+      setSessionEnded(true) // Mark session as ended
+
+      // Format the topic ID correctly to match how it's stored
+      const currentTopicName = Array.isArray(topicName)
+        ? topicName[0]
+        : topicName
+      const currentTopicId = `cooking-${currentTopicName
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`
+      const currentSessionId = Array.isArray(sessionId)
+        ? sessionId[0]
+        : sessionId
+
       // Update session status to completed
       const sessionDoc = getDocument(
         FIREBASE_COLLECTIONS.SESSIONS,
@@ -196,7 +216,26 @@ export default function ReelsScreen() {
       const session: Session = {
         ...sessionData,
         id: currentSessionId,
-      } as Session
+        topicId: currentTopicId,
+        topicName: currentTopicName,
+        userId: user.uid,
+        status: "completed",
+        startTime: sessionData?.startTime || Timestamp.now(),
+        duration: Number(duration),
+      }
+
+      const userProgress: UserProgress = {
+        videosWatched,
+        timeSpentSeconds: Math.floor((Date.now() - sessionStartTime) / 1000),
+        completedSegments: [],
+      }
+
+      console.log("Starting quiz with session:", {
+        sessionId: session.id,
+        topicId: session.topicId,
+        topicName: session.topicName,
+        userId: session.userId,
+      })
 
       Alert.alert(
         "Time's Up!",
@@ -205,6 +244,10 @@ export default function ReelsScreen() {
           {
             text: "Take Quiz",
             onPress: async () => {
+              // Prevent multiple quiz starts
+              if (quizStarted) return
+              setQuizStarted(true)
+
               try {
                 // Start loading with first step
                 setQuizLoading({
@@ -225,7 +268,10 @@ export default function ReelsScreen() {
                 }))
 
                 // Generate the quiz
-                await startQuizAfterSession(session)
+                const quizId = await startQuizAfterSession(
+                  session,
+                  userProgress
+                )
 
                 // Final step before navigation
                 setQuizLoading((prev) => ({
@@ -239,8 +285,18 @@ export default function ReelsScreen() {
 
                 // Hide loading
                 setQuizLoading((prev) => ({ ...prev, show: false }))
+
+                // Navigate to quiz screen
+                router.replace({
+                  pathname: "/quiz/[sessionId]" as const,
+                  params: {
+                    sessionId: session.id,
+                    quizId,
+                  },
+                })
               } catch (error) {
                 setQuizLoading((prev) => ({ ...prev, show: false }))
+                setQuizStarted(false) // Reset quiz started state on error
                 console.error("Error generating quiz:", error)
                 Alert.alert(
                   "Error",
@@ -249,22 +305,72 @@ export default function ReelsScreen() {
               }
             },
           },
+          {
+            text: "Skip",
+            style: "cancel",
+            onPress: () => {
+              // Navigate back to home or handle skip
+              router.replace("/(tabs)" as const)
+            },
+          },
         ],
         { cancelable: false }
       )
     } catch (err) {
       console.error("Error ending session:", err)
+      setSessionEnded(false) // Reset session ended state on error
       Alert.alert(
         "Error",
         "There was an error ending your session. Please try again."
       )
     }
-  }, [topicId, sessionId, user])
+  }, [
+    topicId,
+    sessionId,
+    user,
+    topicName,
+    videosWatched,
+    sessionStartTime,
+    contentId,
+    sessionEnded,
+    quizStarted,
+  ])
 
   useEffect(() => {
-    async function loadVideos() {
+    async function loadContent() {
       try {
         setLoading(true)
+
+        // Load generated content
+        if (sessionId) {
+          const currentSessionId = Array.isArray(sessionId)
+            ? sessionId[0]
+            : sessionId
+          const content = await getContentForSession(currentSessionId)
+          setGeneratedContent(content)
+
+          // Log the content structure
+          console.log("Loaded Generated Content:", {
+            sessionId: currentSessionId,
+            concepts: content?.structure.concepts.length,
+            videoScripts: content?.videoScripts.length,
+            totalDuration: content?.metadata.totalDuration,
+            difficulty: content?.metadata.difficulty,
+          })
+
+          // Log each video script
+          console.log(
+            "Video Scripts:",
+            content?.videoScripts.map((script) => ({
+              order: script.order,
+              duration: script.targetDuration,
+              hook: script.script.hooks,
+              keyPoints: script.keyPoints,
+            }))
+          )
+        }
+
+        // Continue with your existing video loading logic
         const pexelsVideos = await searchVideos(topicName as string, 10)
         const formattedVideos = await Promise.all(
           pexelsVideos.map(async (video) => {
@@ -308,15 +414,15 @@ export default function ReelsScreen() {
           }
         }
       } catch (err) {
-        console.error("Error loading videos:", err)
-        setError("Failed to load videos. Please try again.")
+        console.error("Error loading content:", err)
+        setError("Failed to load content. Please try again.")
       } finally {
         setLoading(false)
       }
     }
 
-    loadVideos()
-  }, [topicName, isResumed, lastVideoId])
+    loadContent()
+  }, [topicName, isResumed, lastVideoId, sessionId])
 
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 50,

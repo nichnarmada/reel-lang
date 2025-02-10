@@ -11,6 +11,7 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  Alert,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
 import { GeneratedTopic, RelatedTopic } from "../../types/topic"
@@ -29,6 +30,8 @@ import {
   getCollection,
   FIREBASE_COLLECTIONS,
   firestore,
+  FIREBASE_SUBCOLLECTIONS,
+  getUserSubcollectionDoc,
 } from "../../utils/firebase/config"
 import {
   Timestamp,
@@ -44,6 +47,7 @@ import { generateSingleTopic } from "../../services/topics/singleTopicGenerator"
 import { useSavedTopics } from "../../hooks/useSavedTopics"
 import { theme } from "../../constants/theme"
 import { LoadingOverlay } from "../../components/LoadingOverlay"
+import { startContentGeneration } from "../../services/content/contentFlow"
 
 const WINDOW_WIDTH = Dimensions.get("window").width
 
@@ -56,6 +60,11 @@ interface TopicDetailsParams {
 
 type DisplayTopic = GeneratedTopic & { id: string }
 
+interface SessionConfig {
+  difficulty: DifficultyLevel
+  duration?: SessionDuration
+}
+
 export default function TopicDetailsScreen() {
   const params = useLocalSearchParams()
   const { user } = useAuth()
@@ -65,6 +74,12 @@ export default function TopicDetailsScreen() {
   const [showDurationModal, setShowDurationModal] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState("Loading topic...")
+  const [sessionLoading, setSessionLoading] = useState({
+    show: false,
+    message: "",
+    step: 0,
+    totalSteps: 3,
+  })
   const pulseAnim = useRef(new Animated.Value(1)).current
   const starScale = useRef(new Animated.Value(1)).current
   const topicColors = useRef<
@@ -88,6 +103,13 @@ export default function TopicDetailsScreen() {
   ]
 
   const [relatedTopicLoading, setRelatedTopicLoading] = useState(false)
+
+  const [sessionConfig, setSessionConfig] = useState<SessionConfig>({
+    difficulty: "beginner",
+  })
+  const [configStep, setConfigStep] = useState<"difficulty" | "duration">(
+    "difficulty"
+  )
 
   const panResponder = useRef(
     PanResponder.create({
@@ -260,22 +282,58 @@ export default function TopicDetailsScreen() {
     if (!topic || !user) return
 
     try {
-      // Create a new session document
-      const sessionsCollection = getCollection(FIREBASE_COLLECTIONS.SESSIONS)
-      const sessionRef = sessionsCollection.doc()
-      await sessionRef.set({
-        id: sessionRef.id,
-        userId: user.uid,
-        topicId: topic.id,
-        topicName: topic.name,
-        status: "active",
-        startTime: Timestamp.now(),
-        duration: duration,
-        isGeneratedTopic: isGenerated,
+      setSessionLoading({
+        show: true,
+        message: "Preparing your learning session...",
+        step: 1,
+        totalSteps: 3,
       })
+
+      // Update topic's difficulty
+      const topicRef = getUserSubcollectionDoc(
+        user.uid,
+        FIREBASE_SUBCOLLECTIONS.USER.GENERATED_TOPICS,
+        topic.id
+      )
+
+      await updateDoc(topicRef, {
+        selectedDifficulty: sessionConfig.difficulty,
+        lastAccessed: Timestamp.now(),
+      })
+
+      // Update to second step
+      setSessionLoading((prev) => ({
+        ...prev,
+        message: "Generating educational content...",
+        step: 2,
+      }))
+
+      const contentBundle = await startContentGeneration(
+        user.uid,
+        {
+          ...topic,
+          selectedDifficulty: sessionConfig.difficulty,
+        },
+        duration
+      )
+
+      if (!contentBundle) {
+        throw new Error("Failed to generate content")
+      }
+
+      // Update to final step
+      setSessionLoading((prev) => ({
+        ...prev,
+        message: "Preparing video experience...",
+        step: 3,
+      }))
+
+      // Small delay to show the final step
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
       // Navigate to reels with session ID
       setShowDurationModal(false)
+      setSessionLoading((prev) => ({ ...prev, show: false }))
       router.replace({
         pathname: "/topic/[id]/reels" as const,
         params: {
@@ -283,22 +341,17 @@ export default function TopicDetailsScreen() {
           topicId: topic.id,
           topicName: topic.name,
           duration: duration.toString(),
-          sessionId: sessionRef.id,
+          sessionId: contentBundle.session.id,
+          contentId: contentBundle.content.id,
         },
       })
     } catch (err) {
-      console.error("Error creating session:", err)
-      // Still navigate even if session creation fails
-      setShowDurationModal(false)
-      router.replace({
-        pathname: "/topic/[id]/reels" as const,
-        params: {
-          id: topic.id,
-          topicId: topic.id,
-          topicName: topic.name,
-          duration: duration.toString(),
-        },
-      })
+      console.error("Error in learning flow:", err)
+      setSessionLoading((prev) => ({ ...prev, show: false }))
+      Alert.alert(
+        "Error",
+        "Failed to start learning session. Please try again."
+      )
     }
   }
 
@@ -306,11 +359,9 @@ export default function TopicDetailsScreen() {
     if (!topic || !user || !isGenerated) return
 
     try {
-      const topicRef = doc(
-        firestore,
-        FIREBASE_COLLECTIONS.USERS,
+      const topicRef = getUserSubcollectionDoc(
         user.uid,
-        "generatedTopics",
+        FIREBASE_SUBCOLLECTIONS.USER.GENERATED_TOPICS,
         topic.id
       )
 
@@ -401,6 +452,167 @@ export default function TopicDetailsScreen() {
       console.error("Error toggling favorite:", err)
       // You might want to show an error toast here
     }
+  }
+
+  const getVideoCount = (duration: number): number => {
+    switch (duration) {
+      case 1:
+        return 2 // Two 30-second videos
+      case 5:
+        return 3 // Three ~100-second videos
+      case 10:
+        return 5 // Five ~120-second videos
+      case 15:
+        return 7 // Seven ~130-second videos
+      default:
+        return 3
+    }
+  }
+
+  const renderModalContent = () => {
+    const renderDifficultyStep = () => (
+      <View style={styles.modalStep}>
+        <Text style={styles.modalTitle}>Choose Your Learning Level</Text>
+        <Text style={styles.modalSubtitle}>
+          Select the difficulty that best matches your current understanding
+        </Text>
+
+        {["beginner", "intermediate", "advanced"].map((level) => (
+          <TouchableOpacity
+            key={level}
+            style={[
+              styles.configOption,
+              sessionConfig.difficulty === level && styles.selectedOption,
+            ]}
+            onPress={() => {
+              setSessionConfig((prev) => ({
+                ...prev,
+                difficulty: level as DifficultyLevel,
+              }))
+              setConfigStep("duration")
+            }}
+          >
+            <View style={styles.optionContent}>
+              <Text
+                style={[
+                  styles.optionTitle,
+                  sessionConfig.difficulty === level &&
+                    styles.selectedOptionText,
+                ]}
+              >
+                {capitalizeText(level)}
+              </Text>
+              <Text
+                style={[
+                  styles.optionDescription,
+                  sessionConfig.difficulty === level &&
+                    styles.selectedOptionText,
+                ]}
+              >
+                {level === "beginner"
+                  ? "Perfect for first-time learners"
+                  : level === "intermediate"
+                  ? "For those with basic understanding"
+                  : "Deep dive into complex concepts"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    )
+
+    const renderDurationStep = () => (
+      <View style={styles.modalStep}>
+        <TouchableOpacity
+          style={styles.modalBackButton}
+          onPress={() => setConfigStep("difficulty")}
+        >
+          <ChevronLeft size={24} color={theme.colors.text.primary} />
+          <Text style={styles.modalBackButtonText}>Difficulty</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.modalTitle}>Choose Session Duration</Text>
+        <Text style={styles.modalSubtitle}>
+          How long would you like to learn for?
+        </Text>
+
+        {sessionLoading.show ? (
+          <LoadingOverlay
+            variant="inline"
+            message={`${sessionLoading.message} (${sessionLoading.step}/${sessionLoading.totalSteps})`}
+            size="large"
+          />
+        ) : (
+          [1, 5, 10, 15].map((duration) => (
+            <TouchableOpacity
+              key={duration}
+              style={[styles.configOption]}
+              onPress={() => handleStartLearning(duration as SessionDuration)}
+            >
+              <View style={styles.optionContent}>
+                <View style={styles.durationHeader}>
+                  <Clock size={20} color={theme.colors.text.secondary} />
+                  <Text style={styles.optionTitle}>
+                    {duration} minute{duration > 1 ? "s" : ""}
+                  </Text>
+                </View>
+                <Text style={styles.optionDescription}>
+                  {getVideoCount(duration)} focused video
+                  {getVideoCount(duration) > 1 ? "s" : ""}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
+    )
+
+    return (
+      <Animated.View
+        style={[
+          styles.modalContent,
+          {
+            transform: [
+              {
+                translateY: Animated.add(
+                  slideAnim.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: [0, 800],
+                  }),
+                  dragY
+                ),
+              },
+            ],
+          },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.dragHandleContainer}>
+          <View style={styles.dragHandle} />
+        </View>
+
+        {/* Step Indicator */}
+        <View style={styles.stepIndicator}>
+          <View
+            style={[
+              styles.stepDot,
+              configStep === "difficulty" && styles.activeStepDot,
+            ]}
+          />
+          <View style={styles.stepLine} />
+          <View
+            style={[
+              styles.stepDot,
+              configStep === "duration" && styles.activeStepDot,
+            ]}
+          />
+        </View>
+
+        {configStep === "difficulty"
+          ? renderDifficultyStep()
+          : renderDurationStep()}
+      </Animated.View>
+    )
   }
 
   if (error && !loading) {
@@ -610,7 +822,7 @@ export default function TopicDetailsScreen() {
           </View>
         )}
 
-        {/* Single loading overlay for all loading states */}
+        {/* Loading overlay only for initial topic load */}
         {loading && (
           <LoadingOverlay
             variant="overlay"
@@ -640,55 +852,7 @@ export default function TopicDetailsScreen() {
               activeOpacity={1}
               onPress={handleCloseModal}
             />
-            <Animated.View
-              style={[
-                styles.modalContent,
-                {
-                  transform: [
-                    {
-                      translateY: Animated.add(
-                        slideAnim.interpolate({
-                          inputRange: [0, 100],
-                          outputRange: [0, 800],
-                        }),
-                        dragY
-                      ),
-                    },
-                  ],
-                },
-              ]}
-              {...panResponder.panHandlers}
-            >
-              <View style={styles.dragHandleContainer}>
-                <View style={styles.dragHandle} />
-              </View>
-
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Choose Session Duration</Text>
-              </View>
-
-              <Text style={styles.modalSubtitle}>
-                How long would you like to learn for?
-              </Text>
-
-              {[1, 5, 10, 15].map((duration) => (
-                <TouchableOpacity
-                  key={duration}
-                  style={styles.durationOption}
-                  onPress={() =>
-                    handleStartLearning(duration as SessionDuration)
-                  }
-                >
-                  <Clock size={20} color={theme.colors.text.secondary} />
-                  <Text style={styles.durationText}>
-                    {duration} minute{duration > 1 ? "s" : ""}
-                  </Text>
-                  <Text style={styles.durationSubtext}>
-                    ~{Math.ceil(duration / 3)} videos
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </Animated.View>
+            {renderModalContent()}
           </Animated.View>
         </Modal>
       )}
@@ -734,6 +898,11 @@ const styles = StyleSheet.create({
   backButton: {
     padding: theme.spacing.sm,
     marginRight: theme.spacing.sm,
+  },
+  modalBackButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: theme.spacing.xl,
   },
   headerTitleContainer: {
     flex: 1,
@@ -949,6 +1118,11 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
   },
+  modalBackButtonText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.xs,
+  },
   aiGeneratedBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1034,5 +1208,65 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     backgroundColor: "rgba(255, 255, 255, 0.9)",
+  },
+  modalStep: {
+    padding: theme.spacing.xl,
+  },
+  stepIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.border.dark,
+  },
+  activeStepDot: {
+    backgroundColor: theme.colors.primary,
+    width: 10,
+    height: 10,
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: theme.colors.border.dark,
+    marginHorizontal: theme.spacing.sm,
+  },
+  configOption: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  selectedOption: {
+    borderColor: theme.colors.primary,
+    backgroundColor: `${theme.colors.primary}15`,
+  },
+  optionContent: {
+    padding: theme.spacing.lg,
+  },
+  optionTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  optionDescription: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+  },
+  selectedOptionText: {
+    color: theme.colors.primary,
+  },
+  durationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
 })

@@ -14,6 +14,8 @@ import { ErrorMessage } from "../../../components/ErrorMessage"
 import {
   getDocument,
   FIREBASE_COLLECTIONS,
+  getSessionSubcollectionDoc,
+  FIREBASE_SUBCOLLECTIONS,
 } from "../../../utils/firebase/config"
 import { Question, Quiz } from "../../../types/quiz"
 
@@ -38,9 +40,17 @@ export default function QuizScreen() {
     const loadQuiz = async () => {
       try {
         console.log("Loading quiz with ID:", quizId)
-        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
-        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
-        const quizSnapshot = await quizDoc.get()
+        const currentSessionId = Array.isArray(sessionId)
+          ? sessionId[0]
+          : sessionId
+
+        // Get quiz from session's subcollection
+        const quizRef = getSessionSubcollectionDoc(
+          currentSessionId,
+          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
+          "questions"
+        )
+        const quizSnapshot = await quizRef.get()
 
         if (!quizSnapshot.exists) {
           throw new Error("Quiz not found")
@@ -72,7 +82,7 @@ export default function QuizScreen() {
     }
 
     loadQuiz()
-  }, [quizId])
+  }, [quizId, sessionId])
 
   const currentQuestion = questions[currentQuestionIndex]
   const progress =
@@ -117,23 +127,25 @@ export default function QuizScreen() {
 
       try {
         // Update quiz document with responses
-        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
-        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
-        await quizDoc.update({
+        const currentSessionId = Array.isArray(sessionId)
+          ? sessionId[0]
+          : sessionId
+        const quizRef = getSessionSubcollectionDoc(
+          currentSessionId,
+          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
+          "questions"
+        )
+        await quizRef.update({
           userResponses,
         })
 
         // Navigate to results
-        const currentSessionId = Array.isArray(sessionId)
-          ? sessionId[0]
-          : sessionId
         router.replace({
           pathname: "/quiz/[sessionId]/results" as const,
           params: {
             sessionId: currentSessionId,
             score: correctAnswers.toString(),
             totalQuestions: questions.length.toString(),
-            quizId: currentQuizId,
           },
         })
       } catch (err) {

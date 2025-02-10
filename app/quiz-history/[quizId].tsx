@@ -10,7 +10,12 @@ import {
 import { useLocalSearchParams, router } from "expo-router"
 import { ChevronLeft } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
-import { getDocument, FIREBASE_COLLECTIONS } from "../../utils/firebase/config"
+import {
+  getDocument,
+  FIREBASE_COLLECTIONS,
+  getSessionSubcollectionDoc,
+  FIREBASE_SUBCOLLECTIONS,
+} from "../../utils/firebase/config"
 import { Quiz, Question, UserResponse } from "../../types/quiz"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { ErrorMessage } from "../../components/ErrorMessage"
@@ -21,7 +26,7 @@ type QuizWithTopic = Quiz & {
 }
 
 export default function QuizDetailScreen() {
-  const { quizId } = useLocalSearchParams()
+  const { quizId, sessionId } = useLocalSearchParams()
   const { user } = useAuth()
   const [quiz, setQuiz] = useState<QuizWithTopic | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,9 +37,17 @@ export default function QuizDetailScreen() {
       if (!user) return
 
       try {
-        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
-        const quizDoc = getDocument(FIREBASE_COLLECTIONS.QUIZZES, currentQuizId)
-        const quizSnapshot = await quizDoc.get()
+        const currentSessionId = Array.isArray(sessionId)
+          ? sessionId[0]
+          : sessionId
+
+        // Get quiz from session's subcollection
+        const quizRef = getSessionSubcollectionDoc(
+          currentSessionId,
+          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
+          "questions"
+        )
+        const quizSnapshot = await quizRef.get()
 
         if (!quizSnapshot.exists) {
           throw new Error("Quiz not found")
@@ -43,7 +56,7 @@ export default function QuizDetailScreen() {
         const quizData = quizSnapshot.data() as Quiz
         const sessionDoc = getDocument(
           FIREBASE_COLLECTIONS.SESSIONS,
-          quizData.sessionId
+          currentSessionId
         )
         const sessionSnapshot = await sessionDoc.get()
 
@@ -60,7 +73,7 @@ export default function QuizDetailScreen() {
     }
 
     loadQuiz()
-  }, [quizId, user])
+  }, [quizId, sessionId, user])
 
   const renderQuestion = (
     question: Question,
