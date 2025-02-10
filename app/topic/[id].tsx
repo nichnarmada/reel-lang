@@ -196,11 +196,9 @@ export default function TopicDetailsScreen() {
 
           // Save or update the topic in user's generatedTopics subcollection
           if (user) {
-            const topicRef = doc(
-              firestore,
-              FIREBASE_COLLECTIONS.USERS,
+            const topicRef = getUserSubcollectionDoc(
               user.uid,
-              "generatedTopics",
+              FIREBASE_SUBCOLLECTIONS.USER.GENERATED_TOPICS,
               id
             )
 
