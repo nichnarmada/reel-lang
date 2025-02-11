@@ -5,26 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Platform,
   Modal,
   Dimensions,
-  Animated,
-  PanResponder,
   Alert,
 } from "react-native"
 import { useLocalSearchParams, Stack, router } from "expo-router"
 import { GeneratedTopic, RelatedTopic } from "../../types/topic"
 import { UserGeneratedTopic } from "../../types/user"
 import { ErrorMessage } from "../../components/ErrorMessage"
-import {
-  ChevronLeft,
-  Play,
-  Clock,
-  X,
-  Sparkles,
-  Star,
-} from "lucide-react-native"
+import { ChevronLeft, Play, Clock, Sparkles, Star } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
 import {
   FIREBASE_SUBCOLLECTIONS,
@@ -40,6 +30,17 @@ import { useSavedTopics } from "../../hooks/useSavedTopics"
 import { theme } from "../../constants/theme"
 import { LoadingOverlay } from "../../components/LoadingOverlay"
 import { startContentGeneration } from "../../services/content/contentFlow"
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  useSharedValue,
+  interpolate,
+  withTiming,
+  withSequence,
+  withRepeat,
+  runOnJS,
+} from "react-native-reanimated"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
 
 const WINDOW_WIDTH = Dimensions.get("window").width
 
@@ -72,15 +73,15 @@ export default function TopicDetailsScreen() {
     step: 0,
     totalSteps: 3,
   })
-  const pulseAnim = useRef(new Animated.Value(1)).current
-  const starScale = useRef(new Animated.Value(1)).current
+  const pulseAnim = useSharedValue(1)
+  const starScale = useSharedValue(1)
   const topicColors = useRef<
     Record<string, { background: string; text: string }>
   >({}).current
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(100)).current
-  const dragY = useRef(new Animated.Value(0)).current
-  const lineAnimation = useRef(new Animated.Value(0)).current
+  const fadeAnim = useSharedValue(0)
+  const slideAnim = useSharedValue(100)
+  const dragY = useSharedValue(0)
+  const lineProgress = useSharedValue(0)
 
   const { favoriteTopic, unfavoriteTopic, isTopicFavorited } = useSavedTopics()
 
@@ -93,31 +94,47 @@ export default function TopicDetailsScreen() {
     "difficulty" | "duration" | "confirm" | "loading"
   >("difficulty")
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow downward drag
-        if (gestureState.dy > 0) {
-          dragY.setValue(gestureState.dy)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100) {
-          handleCloseModal()
-        } else {
-          // Otherwise, snap back to original position
-          Animated.spring(dragY, {
-            toValue: 0,
-            tension: 65,
-            friction: 11,
-            useNativeDriver: true,
-          }).start()
-        }
-      },
+  const gesture = Gesture.Pan()
+    .onBegin(() => {
+      "worklet"
+      dragY.value = 0
     })
-  ).current
+    .onUpdate((event) => {
+      "worklet"
+      if (event.translationY > 0) {
+        dragY.value = event.translationY
+      }
+    })
+    .onEnd((event) => {
+      "worklet"
+      if (event.translationY > 100) {
+        runOnJS(handleCloseModal)()
+      } else {
+        dragY.value = withSpring(0)
+      }
+    })
+
+  const modalStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnim.value,
+  }))
+
+  const modalContentStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          interpolate(slideAnim.value, [0, 100], [0, 800], "clamp") +
+          dragY.value,
+      },
+    ],
+  }))
+
+  const starStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: starScale.value }],
+  }))
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseAnim.value }],
+  }))
 
   const handleCloseModal = () => {
     setShowDurationModal(false)
@@ -126,36 +143,18 @@ export default function TopicDetailsScreen() {
   useEffect(() => {
     if (showDurationModal) {
       setModalVisible(true)
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 65,
-          friction: 11,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 100,
-          tension: 65,
-          friction: 11,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setModalVisible(false)
-        dragY.setValue(0)
+      fadeAnim.value = withTiming(1, { duration: 200 })
+      slideAnim.value = withSpring(0, {
+        damping: 15,
+        stiffness: 90,
       })
+    } else {
+      fadeAnim.value = withTiming(0, { duration: 200 })
+      slideAnim.value = withSpring(100, {
+        damping: 15,
+        stiffness: 90,
+      })
+      runOnJS(setModalVisible)(false)
     }
   }, [showDurationModal])
 
@@ -241,22 +240,15 @@ export default function TopicDetailsScreen() {
 
   useEffect(() => {
     if (loading) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 0.6,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start()
+      pulseAnim.value = withRepeat(
+        withSequence(
+          withTiming(0.6, { duration: 1000 }),
+          withTiming(1, { duration: 1000 })
+        ),
+        -1 // infinite
+      )
     } else {
-      pulseAnim.setValue(1)
+      pulseAnim.value = 1
     }
   }, [loading])
 
@@ -265,12 +257,27 @@ export default function TopicDetailsScreen() {
     if (configStep === "duration") toValue = 1
     else if (configStep === "confirm" || configStep === "loading") toValue = 2
 
-    Animated.timing(lineAnimation, {
-      toValue,
-      duration: 300,
-      useNativeDriver: false,
-    }).start()
+    lineProgress.value = withSpring(toValue, {
+      damping: 15,
+      stiffness: 90,
+    })
   }, [configStep])
+
+  const firstLineStyle = useAnimatedStyle(() => ({
+    position: "absolute",
+    left: 0,
+    width: `${interpolate(lineProgress.value, [0, 1], [0, 100], "clamp")}%`,
+    height: 2,
+    backgroundColor: theme.colors.primary,
+  }))
+
+  const secondLineStyle = useAnimatedStyle(() => ({
+    position: "absolute",
+    left: 0,
+    width: `${interpolate(lineProgress.value, [1, 2], [0, 100], "clamp")}%`,
+    height: 2,
+    backgroundColor: theme.colors.text.secondary,
+  }))
 
   const handleStartLearning = async (duration: SessionDuration) => {
     if (!topic || !user) return
@@ -421,17 +428,7 @@ export default function TopicDetailsScreen() {
     if (!topic) return
 
     try {
-      // Animate the star
-      Animated.sequence([
-        Animated.spring(starScale, {
-          toValue: 1.2,
-          useNativeDriver: true,
-        }),
-        Animated.spring(starScale, {
-          toValue: 1,
-          useNativeDriver: true,
-        }),
-      ]).start()
+      starScale.value = withSequence(withSpring(1.2), withSpring(1))
 
       const topicId = `${topic.category}-${topic.name
         .toLowerCase()
@@ -444,7 +441,6 @@ export default function TopicDetailsScreen() {
       }
     } catch (err) {
       console.error("Error toggling favorite:", err)
-      // You might want to show an error toast here
     }
   }
 
@@ -610,25 +606,7 @@ export default function TopicDetailsScreen() {
     )
 
     return (
-      <Animated.View
-        style={[
-          styles.modalContent,
-          {
-            transform: [
-              {
-                translateY: Animated.add(
-                  slideAnim.interpolate({
-                    inputRange: [0, 100],
-                    outputRange: [0, 800],
-                  }),
-                  dragY
-                ),
-              },
-            ],
-          },
-        ]}
-        {...panResponder.panHandlers}
-      >
+      <Animated.View style={[styles.modalContent, modalContentStyle]}>
         <View style={styles.dragHandleContainer}>
           <View style={styles.dragHandle} />
         </View>
@@ -646,10 +624,7 @@ export default function TopicDetailsScreen() {
               }
             }}
             disabled={configStep === "difficulty"}
-            style={[
-              styles.stepColumn,
-              configStep === "difficulty" && styles.disabledStep,
-            ]}
+            style={styles.stepColumn}
           >
             <View
               style={[
@@ -686,19 +661,7 @@ export default function TopicDetailsScreen() {
           </TouchableOpacity>
           <View style={styles.stepLineContainer}>
             <View style={styles.stepLine} />
-            <Animated.View
-              style={[
-                styles.completedStepLine,
-                {
-                  position: "absolute",
-                  left: 0,
-                  width: lineAnimation.interpolate({
-                    inputRange: [0, 1, 2],
-                    outputRange: ["0%", "100%", "100%"],
-                  }),
-                },
-              ]}
-            />
+            <Animated.View style={firstLineStyle} />
           </View>
           <TouchableOpacity
             onPress={() => {
@@ -707,11 +670,7 @@ export default function TopicDetailsScreen() {
               }
             }}
             disabled={configStep === "difficulty" || configStep === "duration"}
-            style={[
-              styles.stepColumn,
-              (configStep === "difficulty" || configStep === "duration") &&
-                styles.disabledStep,
-            ]}
+            style={styles.stepColumn}
           >
             <View
               style={[
@@ -742,27 +701,9 @@ export default function TopicDetailsScreen() {
           </TouchableOpacity>
           <View style={styles.stepLineContainer}>
             <View style={styles.stepLine} />
-            <Animated.View
-              style={[
-                styles.completedStepLine,
-                {
-                  position: "absolute",
-                  left: 0,
-                  width: lineAnimation.interpolate({
-                    inputRange: [1, 2],
-                    outputRange: ["0%", "100%"],
-                  }),
-                },
-              ]}
-            />
+            <Animated.View style={secondLineStyle} />
           </View>
-          <View
-            style={[
-              styles.stepColumn,
-              (configStep === "difficulty" || configStep === "duration") &&
-                styles.disabledStep,
-            ]}
-          >
+          <View style={styles.stepColumn}>
             <View
               style={[
                 styles.stepDot,
@@ -847,12 +788,7 @@ export default function TopicDetailsScreen() {
                 <Text style={styles.headerTitle}>{topic?.name}</Text>
               </View>
               {topic && (
-                <Animated.View
-                  style={[
-                    styles.favoriteButton,
-                    { transform: [{ scale: starScale }] },
-                  ]}
-                >
+                <Animated.View style={[styles.favoriteButton, starStyle]}>
                   <TouchableOpacity onPress={handleFavoritePress}>
                     <Star
                       size={24}
@@ -989,20 +925,17 @@ export default function TopicDetailsScreen() {
           transparent={true}
           onRequestClose={handleCloseModal}
         >
-          <Animated.View
-            style={[
-              styles.modalContainer,
-              {
-                opacity: fadeAnim,
-              },
-            ]}
-          >
+          <Animated.View style={[styles.modalContainer, modalStyle]}>
             <TouchableOpacity
               style={styles.modalOverlay}
               activeOpacity={1}
               onPress={handleCloseModal}
             />
-            {renderModalContent()}
+            <GestureDetector gesture={gesture}>
+              <Animated.View style={[styles.modalContent, modalContentStyle]}>
+                {renderModalContent()}
+              </Animated.View>
+            </GestureDetector>
           </Animated.View>
         </Modal>
       )}
@@ -1396,10 +1329,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 2,
     backgroundColor: theme.colors.border.dark,
-  },
-  completedStepLine: {
-    height: 2,
-    backgroundColor: theme.colors.primary,
   },
   stepLabelContainer: {
     paddingVertical: theme.spacing.xs,
