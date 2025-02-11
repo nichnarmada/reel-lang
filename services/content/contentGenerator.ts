@@ -29,7 +29,7 @@ Number of Segments: ${segmentPlan.length}
 Session Type: ${isShortSession ? "Quick Focus" : "In-depth Learning"}
 Search Terms: ${topic.searchTerms.join(", ")}
 
-Generate content in the following JSON format:
+Generate content in the following JSON format (return exactly this structure):
 {
   "concepts": [
     {
@@ -52,6 +52,13 @@ Generate content in the following JSON format:
   ],
   "segmentPlan": ${JSON.stringify(segmentPlan)}
 }
+
+Important:
+- Return a single JSON object with the exact structure above
+- The concepts array must contain exactly ${segmentPlan.length} concepts
+- Each concept must have all fields shown in the example
+- Do not include any text outside the JSON object
+- Do not include markdown formatting (no \`\`\`)
 
 Segment Types:
 1. Core (${
@@ -112,7 +119,7 @@ Generate video segments in the following JSON format:
     "conceptIds": ["concept_1"],
     "segmentType": "core",
     "script": {
-      "text": "Engaging script content here",
+      "text": "Engaging script content here without any timestamps or time markers",
       "visualCues": ["Show diagram of X", "Highlight Y"],
       "duration": 60,
       "hooks": "Attention-grabbing opening line"
@@ -128,18 +135,21 @@ Script Requirements by Type:
    - Multiple visual aids
    - Detailed examples
    - Smooth, educational pacing
+   - No timestamps or time markers in the text
 
 2. Quick Segments (${segmentPlan.filter((s) => s.type === "quick").length}):
    - Rapid, focused delivery
    - Single clear visual per point
    - Actionable insights
    - High-energy pacing
+   - No timestamps or time markers in the text
 
 3. Recap Segments (${segmentPlan.filter((s) => s.type === "recap").length}):
    - Review key takeaways
    - Visual summaries
    - Connection to previous segments
    - Reinforcement of main points
+   - No timestamps or time markers in the text
 
 General Requirements:
 1. Create exactly ${structure.segmentPlan.length} segments
@@ -156,6 +166,7 @@ General Requirements:
    - Core: Clear understanding check
    - Quick: Action item or key insight
    - Recap: Bridge to next concept
+9. Do not include any timestamps, time markers, or time-based annotations in the script text
 
 Return only the JSON array, no additional text or formatting.`
 }
@@ -166,13 +177,88 @@ const processEducationalContent = async (
   segmentPlan: SegmentDurationGuide[]
 ): Promise<EducationalStructure | null> => {
   try {
-    const cleanedResponse = response
+    console.log("Processing educational content response:", {
+      responseLength: response.length,
+      difficulty,
+      segmentPlanLength: segmentPlan.length,
+    })
+
+    // First, try to clean any potential markdown or extra text
+    let cleanedResponse = response
       .trim()
       .replace(/```json\s*/g, "")
       .replace(/```\s*/g, "")
       .replace(/,(\s*[\]}])/g, "$1")
 
-    const parsed = JSON.parse(cleanedResponse)
+    // Try to find the JSON object if there's extra text
+    const jsonStart = cleanedResponse.indexOf("{")
+    const jsonEnd = cleanedResponse.lastIndexOf("}")
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      cleanedResponse = cleanedResponse.slice(jsonStart, jsonEnd + 1)
+    }
+
+    console.log("Cleaned response:", cleanedResponse)
+
+    let parsed
+    try {
+      parsed = JSON.parse(cleanedResponse)
+    } catch (parseError) {
+      console.error("JSON parsing error:", parseError)
+      console.error("Failed to parse response:", cleanedResponse)
+      return null
+    }
+
+    // Validate the structure
+    const validationErrors: string[] = []
+
+    if (!parsed.concepts || !Array.isArray(parsed.concepts)) {
+      validationErrors.push("Missing or invalid concepts array")
+    } else if (parsed.concepts.length !== segmentPlan.length) {
+      validationErrors.push(
+        `Expected ${segmentPlan.length} concepts, got ${parsed.concepts.length}`
+      )
+    }
+
+    if (
+      !parsed.learningObjectives ||
+      !Array.isArray(parsed.learningObjectives)
+    ) {
+      validationErrors.push("Missing or invalid learningObjectives array")
+    }
+
+    if (!parsed.prerequisites || !Array.isArray(parsed.prerequisites)) {
+      validationErrors.push("Missing or invalid prerequisites array")
+    }
+
+    // Validate each concept
+    parsed.concepts?.forEach((concept: any, index: number) => {
+      if (!concept.id) validationErrors.push(`Concept ${index} missing id`)
+      if (!concept.name) validationErrors.push(`Concept ${index} missing name`)
+      if (!concept.description)
+        validationErrors.push(`Concept ${index} missing description`)
+      if (!Array.isArray(concept.keyPoints))
+        validationErrors.push(`Concept ${index} missing or invalid keyPoints`)
+      if (!Array.isArray(concept.examples))
+        validationErrors.push(`Concept ${index} missing or invalid examples`)
+      if (typeof concept.importance !== "number")
+        validationErrors.push(`Concept ${index} missing or invalid importance`)
+      if (!concept.segmentType)
+        validationErrors.push(`Concept ${index} missing segmentType`)
+    })
+
+    if (validationErrors.length > 0) {
+      console.error("Content validation errors:", validationErrors)
+      return null
+    }
+
+    console.log("Parsed response structure:", {
+      hasStructure: !!parsed,
+      hasConcepts: Array.isArray(parsed.concepts),
+      conceptsLength: parsed.concepts?.length,
+      hasLearningObjectives: Array.isArray(parsed.learningObjectives),
+      hasPrerequisites: Array.isArray(parsed.prerequisites),
+    })
+
     return {
       ...parsed,
       difficulty,
@@ -180,6 +266,7 @@ const processEducationalContent = async (
     }
   } catch (error) {
     console.error("Error processing educational content:", error)
+    console.error("Raw response:", response)
     return null
   }
 }
@@ -198,11 +285,22 @@ const processVideoScripts = async (
     const parsed = JSON.parse(cleanedResponse)
     if (!Array.isArray(parsed)) return []
 
-    return parsed.map((script: VideoSegmentScript, index: number) => ({
+    const scripts = parsed.map((script: VideoSegmentScript, index: number) => ({
       ...script,
       targetDuration: segmentPlan[index].targetDuration,
       segmentType: segmentPlan[index].type,
     }))
+
+    // Log each script's text
+    scripts.forEach((script, index) => {
+      console.log(`Video script ${index + 1} (${script.segmentType}):`, {
+        text: script.script.text,
+        targetDuration: script.targetDuration,
+        actualDuration: script.script.duration,
+      })
+    })
+
+    return scripts
   } catch (error) {
     console.error("Error processing video scripts:", error)
     return []

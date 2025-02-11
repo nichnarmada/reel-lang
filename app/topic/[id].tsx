@@ -63,7 +63,7 @@ export default function TopicDetailsScreen() {
     show: false,
     message: "",
     step: 0,
-    totalSteps: 3,
+    totalSteps: 4,
   })
   const pulseAnim = useSharedValue(1)
   const starScale = useSharedValue(1)
@@ -275,7 +275,7 @@ export default function TopicDetailsScreen() {
         show: true,
         message: "Preparing your learning session...",
         step: 1,
-        totalSteps: 3,
+        totalSteps: 4,
       })
 
       // Update topic's difficulty
@@ -297,6 +297,7 @@ export default function TopicDetailsScreen() {
         step: 2,
       }))
 
+      // Start content generation - this includes audio generation
       const contentBundle = await startContentGeneration(
         user.uid,
         {
@@ -314,7 +315,7 @@ export default function TopicDetailsScreen() {
       setSessionLoading((prev) => ({
         ...prev,
         message: "Preparing video experience...",
-        step: 3,
+        step: 4,
       }))
 
       // Small delay to show the final step

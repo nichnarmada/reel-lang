@@ -10,6 +10,7 @@ import {
   FIREBASE_SUBCOLLECTIONS,
   getSessionSubcollectionDoc,
 } from "../../utils/firebase/config"
+import { AudioGenerationService } from "../audio/audioGenerationService"
 
 interface ContentBundle {
   session: Session
@@ -76,6 +77,38 @@ export const startContentGeneration = async (
       "videoScripts"
     )
     await setDoc(scriptsRef, { scripts: content.videoScripts || [] })
+
+    // 6. Generate audio for first 2 scripts
+    const audioService = AudioGenerationService.getInstance()
+    if (content.videoScripts && content.videoScripts.length > 0) {
+      console.log("Generating initial audio for first 2 scripts:", {
+        sessionId,
+        scriptCount: Math.min(2, content.videoScripts.length),
+      })
+
+      // Generate first 2 scripts
+      const initialScripts = content.videoScripts.slice(0, 2)
+      await audioService.generateSessionAudio(sessionId, initialScripts)
+
+      // Start background generation for remaining scripts
+      if (content.videoScripts.length > 2) {
+        const remainingScripts = content.videoScripts.slice(2)
+        console.log(
+          "Starting background audio generation for remaining scripts:",
+          {
+            sessionId,
+            remainingCount: remainingScripts.length,
+          }
+        )
+
+        // Fire and forget - don't await this
+        audioService
+          .generateSessionAudio(sessionId, remainingScripts)
+          .catch((error) => {
+            console.error("Error in background audio generation:", error)
+          })
+      }
+    }
 
     console.log("Created new session with content:", {
       sessionId: session.id,

@@ -26,15 +26,17 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated"
 import Video, { VideoRef } from "react-native-video"
+import { Audio } from "expo-av"
 
 import { LAYOUT } from "../../constants/layout"
 import { theme } from "../../constants/theme"
 import { useSavedVideos } from "../../hooks/useSavedVideos"
+import { AudioGenerationService } from "../../services/audio/audioGenerationService"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT - LAYOUT.TAB_BAR_HEIGHT
 
-type VideoPlayerProps = {
+interface VideoPlayerProps {
   uri: string
   paused: boolean
   repeat?: boolean
@@ -54,6 +56,9 @@ type VideoPlayerProps = {
     topicName: string
   }
   style?: any
+  segmentId?: string
+  sessionId?: string
+  targetDuration?: number
 }
 
 export default function VideoPlayer({
@@ -68,15 +73,22 @@ export default function VideoPlayer({
   onDislike,
   videoInfo,
   style,
+  segmentId,
+  sessionId,
+  targetDuration,
 }: VideoPlayerProps) {
   const videoRef = useRef<VideoRef>(null)
+  const audioRef = useRef<VideoRef>(null)
   const [paused, setPaused] = useState(initialPaused)
   const [loading, setLoading] = useState(true)
   const [isMuted, setIsMuted] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [isDisliked, setIsDisliked] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [duration, setDuration] = useState(0)
+  const [videoDuration, setVideoDuration] = useState(0)
+  const [audioDuration, setAudioDuration] = useState(0)
+  const [videoLoopCount, setVideoLoopCount] = useState(0)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const { videos, saveVideo, removeVideo } = useSavedVideos()
   const isSaved = videoInfo
     ? videos.some((v) => v.videoId === videoInfo.id)
@@ -84,14 +96,68 @@ export default function VideoPlayer({
   const scale = useSharedValue(0)
   const opacity = useSharedValue(0)
 
+  // Load audio URL if segmentId and sessionId are provided
+  useEffect(() => {
+    let isMounted = true
+    let retryTimeout: NodeJS.Timeout
+
+    async function loadAudioUrl() {
+      if (!segmentId || !sessionId) return
+
+      try {
+        const audioService = AudioGenerationService.getInstance()
+        const audioMetadata = await audioService.getAudioMetadata(
+          sessionId,
+          segmentId
+        )
+
+        if (!isMounted) return
+
+        if (audioMetadata && audioMetadata.status === "completed") {
+          console.log("Loading audio from URL:", audioMetadata.url)
+          setAudioUrl(audioMetadata.url)
+        } else if (audioMetadata && audioMetadata.status === "pending") {
+          // If audio is still pending, retry after a delay
+          console.log("Audio still generating, will retry in 2 seconds...")
+          retryTimeout = setTimeout(loadAudioUrl, 2000)
+        } else {
+          console.warn("Audio not found or not ready:", segmentId)
+        }
+      } catch (error) {
+        console.error("Error loading audio URL:", error)
+      }
+    }
+
+    loadAudioUrl()
+
+    return () => {
+      isMounted = false
+      if (retryTimeout) clearTimeout(retryTimeout)
+    }
+  }, [segmentId, sessionId])
+
   useEffect(() => {
     setPaused(initialPaused)
   }, [initialPaused])
 
   const handleLoad = (data: any) => {
     setLoading(false)
-    setDuration(data.duration)
+    setVideoDuration(data.duration)
     onLoad?.()
+
+    // Calculate how many times to loop the video
+    if (targetDuration && data.duration) {
+      const loopCount = Math.ceil(targetDuration / data.duration)
+      setVideoLoopCount(loopCount)
+    }
+  }
+
+  const handleAudioLoad = (data: any) => {
+    if (data.duration) {
+      setAudioDuration(data.duration)
+      // If we have audio, use its duration for progress calculation
+      setVideoDuration(data.duration)
+    }
   }
 
   const handleError = (error: any) => {
@@ -100,13 +166,45 @@ export default function VideoPlayer({
     onError?.(error)
   }
 
-  const handleEnd = () => {
-    onEnd?.()
+  const handleProgress = (data: { currentTime: number }) => {
+    // Only update progress from video if we don't have audio
+    if (!audioUrl) {
+      setProgress(data.currentTime / videoDuration)
+      onProgress?.(data)
+    }
   }
 
-  const handleProgress = (data: { currentTime: number }) => {
-    setProgress(data.currentTime / duration)
-    onProgress?.(data)
+  const handleAudioProgress = (data: { currentTime: number }) => {
+    // Use audio progress when available
+    if (audioUrl && audioDuration) {
+      setProgress(data.currentTime / audioDuration)
+      onProgress?.(data)
+
+      // Loop video if needed
+      if (videoRef.current) {
+        const videoTime = data.currentTime % videoDuration
+        videoRef.current.seek(videoTime)
+      }
+    }
+  }
+
+  const handleEnd = () => {
+    // Only handle end from video if we don't have audio
+    if (!audioUrl) {
+      if (targetDuration && videoLoopCount > 1) {
+        setVideoLoopCount((prev) => prev - 1)
+        videoRef.current?.seek(0)
+      } else {
+        onEnd?.()
+      }
+    }
+  }
+
+  const handleAudioEnd = () => {
+    // Handle end from audio when available
+    if (audioUrl) {
+      onEnd?.()
+    }
   }
 
   const togglePlayPause = () => {
@@ -138,14 +236,12 @@ export default function VideoPlayer({
       setIsDisliked(false)
       setIsLiked(true)
       showLikeAnimation()
-      onLike?.()
     }
   }
 
   const handleDislike = () => {
     setIsLiked(false)
     setIsDisliked(!isDisliked)
-    onDislike?.()
   }
 
   const handleSave = async () => {
@@ -210,7 +306,6 @@ export default function VideoPlayer({
       if (!isLiked) {
         runOnJS(setIsDisliked)(false)
         runOnJS(setIsLiked)(true)
-        onLike && runOnJS(onLike)()
       }
       showLikeAnimation()
     })
@@ -231,9 +326,9 @@ export default function VideoPlayer({
             source={{ uri }}
             style={styles.video}
             resizeMode="cover"
-            repeat={repeat}
+            repeat={true}
             paused={paused}
-            muted={isMuted}
+            muted={true}
             onLoad={handleLoad}
             onError={handleError}
             onProgress={handleProgress}
@@ -245,6 +340,21 @@ export default function VideoPlayer({
               ? { automaticallyWaitsToMinimizeStalling: false }
               : {})}
           />
+          {audioUrl && (
+            <Video
+              ref={audioRef}
+              source={{ uri: audioUrl }}
+              paused={paused}
+              muted={isMuted}
+              repeat={!!(repeat || (targetDuration && videoLoopCount > 1))}
+              style={{ width: 0, height: 0 }}
+              playInBackground={false}
+              playWhenInactive={false}
+              onLoad={handleAudioLoad}
+              onProgress={handleAudioProgress}
+              onEnd={handleAudioEnd}
+            />
+          )}
           {paused && !loading && (
             <View style={styles.pauseOverlay}>
               <Play size={64} color={theme.colors.text.inverse} />

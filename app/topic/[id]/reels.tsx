@@ -35,6 +35,7 @@ import {
   getBestVideoUrl,
   getVideoThumbnail,
 } from "../../../utils/pexels"
+import { VideoSegmentScript } from "../../../types/content"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT
@@ -45,6 +46,7 @@ type VideoItem = {
   title: string
   description: string
   thumbnail: string
+  segmentId?: string
 }
 
 export default function ReelsScreen() {
@@ -328,18 +330,25 @@ export default function ReelsScreen() {
       try {
         setLoading(true)
 
+        let videoScripts: VideoSegmentScript[] = []
+        let currentSessionId = ""
+
         // Load generated content
         if (sessionId) {
-          const currentSessionId = Array.isArray(sessionId)
-            ? sessionId[0]
-            : sessionId
-          await getContentForSession(currentSessionId)
+          currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
+          const content = await getContentForSession(currentSessionId)
+          if (content && content.videoScripts) {
+            videoScripts = content.videoScripts
+          }
         }
 
         // Continue with your existing video loading logic
-        const pexelsVideos = await searchVideos(topicName as string, 10)
+        const pexelsVideos = await searchVideos(
+          topicName as string,
+          videoScripts.length || 10
+        )
         const formattedVideos = await Promise.all(
-          pexelsVideos.map(async (video) => {
+          pexelsVideos.map(async (video, index) => {
             const thumbnail = video.image || (await getVideoThumbnail(video.id))
             return {
               id: video.id.toString(),
@@ -347,6 +356,7 @@ export default function ReelsScreen() {
               title: `Learn ${topicName} - Part ${video.id}`,
               description: `Educational video about ${topicName}`,
               thumbnail,
+              segmentId: videoScripts[index]?.id,
             }
           })
         )
@@ -379,9 +389,9 @@ export default function ReelsScreen() {
             setVisibleVideoId(formattedVideos[0].id)
           }
         }
-      } catch (err) {
-        console.error("Error loading content:", err)
-        setError("Failed to load content. Please try again.")
+      } catch (error) {
+        console.error("Error loading content:", error)
+        setError("Failed to load content")
       } finally {
         setLoading(false)
       }
@@ -465,6 +475,8 @@ export default function ReelsScreen() {
                     ? topicName[0]
                     : topicName,
                 }}
+                segmentId={item.segmentId}
+                sessionId={Array.isArray(sessionId) ? sessionId[0] : sessionId}
               />
               <View style={styles.overlay}>
                 <View style={styles.videoInfo}>
