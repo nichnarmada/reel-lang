@@ -87,6 +87,8 @@ DiscoverAI is an AI-powered learning platform that helps users discover and lear
   - [x] Multiple quiz attempts
   - [x] New quiz generation
   - [x] Progress tracking
+  - [x] Session-based quiz storage
+  - [x] Quiz history view
   - [ ] Knowledge gap identification
 
 ### Learning Statistics
@@ -97,6 +99,7 @@ DiscoverAI is an AI-powered learning platform that helps users discover and lear
   - [x] Session completion metrics
   - [x] Topics explored counter
   - [x] Quiz performance tracking
+  - [x] Quiz history tracking
   - [ ] Learning streak tracking
 
 - [x] Advanced Analytics
@@ -106,6 +109,8 @@ DiscoverAI is an AI-powered learning platform that helps users discover and lear
   - [x] Quiz results visualization
   - [x] Performance trends
   - [x] Session insights
+  - [x] Quiz performance breakdown
+  - [x] Time spent per question tracking
 
 ### Achievement System
 
@@ -113,6 +118,7 @@ DiscoverAI is an AI-powered learning platform that helps users discover and lear
   - [x] Learning milestones
   - [x] Topic-based achievements
   - [x] Achievement badges
+  - [x] Quiz completion achievements
   - [ ] Consistency metrics
   - [x] Personal records
 

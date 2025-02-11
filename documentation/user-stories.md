@@ -56,6 +56,11 @@ User stories for DiscoverAI - an intelligent learning platform that adapts to ea
 - [x] As a learner, I want to generate new quizzes on the same topic
 - [x] As a learner, I want to see explanations for incorrect answers
 - [x] As a learner, I want to track my quiz performance
+- [x] As a learner, I want to see my quiz history for each session
+- [x] As a learner, I want to review past quizzes and my answers
+- [x] As a learner, I want to see how much time I spent on each question
+- [x] As a learner, I want quizzes that match my session content
+- [x] As a learner, I want to see my quiz performance trends
 - [ ] As a learner, I want to identify my knowledge gaps
 
 ### Core AI Features
@@ -63,17 +68,19 @@ User stories for DiscoverAI - an intelligent learning platform that adapts to ea
 - [x] As a learner, I want AI-generated quiz questions based on my topic
 - [x] As a learner, I want personalized topic suggestions
 - [x] As a learner, I want clear explanations for quiz answers
+- [x] As a learner, I want questions that match my learning progress
 - [ ] As a learner, I want to see my knowledge gaps in topics
 - [ ] As a learner, I want topic mastery tracking
 - [ ] As a learner, I want learning path recommendations
 
 ### Learning Statistics Features
 
-- As a learner, I want to see my total time spent learning
-- As a learner, I want to track my learning streaks
-- As a learner, I want to view my quiz performance over time
-- As a learner, I want to know how many topics I've explored
-- As a learner, I want to see my average session completion rate
+- [x] As a learner, I want to see my total time spent learning
+- [x] As a learner, I want to view my quiz performance over time
+- [x] As a learner, I want to know how many topics I've explored
+- [x] As a learner, I want to see my average session completion rate
+- [x] As a learner, I want to track my quiz scores across sessions
+- [ ] As a learner, I want to track my learning streaks
 
 ### Advanced Analytics Features
 

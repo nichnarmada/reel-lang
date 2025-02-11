@@ -149,6 +149,61 @@ sessions: {
   startTime: timestamp;
   completedAt?: timestamp;
   duration: number; // in minutes
+  progress?: {
+    timeSpentSeconds: number;
+    videosWatched: number;
+    remainingTimeSeconds: number;
+    lastVideoId?: string;
+    lastVideoTimestamp?: number;
+  };
+  topicEmoji?: string;
+}
+
+// Session Subcollections
+sessions/{sessionId}/content: {
+  structure: GeneratedContent // Educational structure and metadata
+}
+
+sessions/{sessionId}/scripts: {
+  videoScripts: VideoSegmentScript[] // Generated video scripts
+}
+
+sessions/{sessionId}/quiz: {
+  questions: {
+    id: string;
+    sessionId: string;
+    userId: string;
+    questions: {
+      id: string;
+      question: string;
+      options: string[];
+      correctAnswer: string;
+      explanation: string;
+      segmentType: "core" | "quick" | "recap";
+      conceptId: string;
+    }[];
+    userResponses: {
+      questionId: string;
+      selectedAnswer: string;
+      isCorrect: boolean;
+      timeSpent: number;
+    }[];
+    metadata: {
+      generatedAt: timestamp;
+      difficulty: 'beginner' | 'intermediate' | 'advanced';
+      topics: string[];
+      segmentBreakdown: {
+        core: number;
+        quick: number;
+        recap: number;
+      };
+      userProgress: {
+        videosWatched: number;
+        timeSpentSeconds: number;
+        completedSegments: string[];
+      };
+    };
+  }
 }
 ```
 
@@ -161,35 +216,6 @@ Firebase Analytics Events:
 - `video_engagement`: Tracks likes, saves, and shares
 - `session_progress`: Tracks learning session progress
 - `session_complete`: Tracks session completion with summary data
-
-### Quizzes Collection
-
-```typescript
-quizzes: {
-  id: string;
-  sessionId: string;
-  userId: string;
-  questions: {
-    question: string;
-    options: string[];
-    correctAnswer: string;
-    explanation: string;
-    topicId: string;
-    videoReference: string; // video ID this question was generated from
-  }[];
-  userResponses: {
-    questionId: string;
-    selectedAnswer: string;
-    isCorrect: boolean;
-    timeSpent: number;
-  }[];
-  metadata: {
-    generatedAt: timestamp;
-    difficulty: 'beginner' | 'intermediate' | 'advanced';
-    topics: string[]; // topic IDs covered
-  };
-}
-```
 
 ## Security Rules
 
@@ -213,10 +239,15 @@ service cloud.firestore {
       allow read: if request.auth != null;
     }
 
-    // Sessions
+    // Sessions and their subcollections
     match /sessions/{sessionId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      match /{subcollection}/{document=**} {
+        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.userId == request.auth.uid;
+        allow write: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.userId == request.auth.uid;
+      }
     }
 
     // Video Reactions
@@ -224,12 +255,6 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-
-    // Quizzes
-    match /quizzes/{quizId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
 
     // Saved Videos

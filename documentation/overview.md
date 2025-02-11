@@ -23,9 +23,23 @@ TimedTutor revolutionizes learning by combining structured time management with 
 ### Learning Validation
 
 - Post-session quizzes
+  - AI-generated questions based on session content
+  - Immediate feedback and explanations
+  - Multiple quiz attempts
+  - Comprehensive quiz review
+  - Session-based quiz history
+  - Time tracking per question
+  - Performance analytics
 - Progress tracking
-- Knowledge gap analysis
-- Topic mastery metrics
+  - Quiz performance metrics
+  - Session completion tracking
+  - Topic mastery analysis
+  - Learning history visualization
+- Knowledge assessment
+  - Question type variety (core/quick/recap)
+  - Concept-based question generation
+  - Personalized difficulty levels
+  - Learning gap identification
 
 ## Target Users
 
