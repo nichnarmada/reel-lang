@@ -1,17 +1,17 @@
+import { Menu } from "lucide-react-native"
 import React from "react"
 import { StyleSheet, View, TouchableOpacity } from "react-native"
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
 } from "react-native-reanimated"
-import { Menu } from "lucide-react-native"
-import { theme } from "../../constants/theme"
-import { FLOATING_MENU } from "./constants"
-import { MenuBackdrop } from "./MenuBackdrop"
+
 import { ActionItem } from "./ActionItem"
+import { MenuBackdrop } from "./MenuBackdrop"
+import { FLOATING_MENU } from "./constants"
 import type { FloatingMenuProps } from "./types"
+import { theme } from "../../constants/theme"
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
 

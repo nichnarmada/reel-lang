@@ -1,8 +1,8 @@
-import { AuthProvider } from "../contexts/auth"
-import { useEffect, useState } from "react"
 import { useSegments, Stack, useRouter } from "expo-router"
-import { useAuth } from "../contexts/auth"
+import { useEffect, useState } from "react"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
+
+import { AuthProvider, useAuth } from "../contexts/auth"
 
 // This component handles the auth flow routing
 function ProtectedLayout() {

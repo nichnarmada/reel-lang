@@ -1,13 +1,17 @@
-import { useState, useEffect } from "react"
-import { useAuth } from "../contexts/auth"
-import { getCollection, getDocument } from "../utils/firebase/config"
-import { SavedVideo } from "../types/user"
-import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
-import { getVideoThumbnail } from "../utils/pexels"
 import {
   Timestamp,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore"
+import { useState, useEffect } from "react"
+
+import { useAuth } from "../contexts/auth"
+import { SavedVideo } from "../types/user"
+import {
+  getCollection,
+  getDocument,
+  FIREBASE_COLLECTIONS,
+} from "../utils/firebase/config"
+import { getVideoThumbnail } from "../utils/pexels"
 
 export function useSavedVideos() {
   const { user } = useAuth()
@@ -132,7 +136,7 @@ export function useSavedVideos() {
         // Ignore engagement update errors - the video might be from an external source
         console.error(
           "Skipping engagement update for external video:",
-          videoInfo.id
+          engagementErr
         )
       }
     } catch (err) {
@@ -163,7 +167,10 @@ export function useSavedVideos() {
         }
       } catch (engagementErr) {
         // Ignore engagement update errors - the video might be from an external source
-        console.error("Skipping engagement update for external video:", videoId)
+        console.error(
+          "Skipping engagement update for external video:",
+          engagementErr
+        )
       }
     } catch (err) {
       console.error("Error removing video:", err)

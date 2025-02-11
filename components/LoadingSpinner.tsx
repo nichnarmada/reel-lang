@@ -1,4 +1,5 @@
 import { ActivityIndicator, View, StyleSheet } from "react-native"
+
 import { theme } from "../constants/theme"
 
 export function LoadingSpinner() {

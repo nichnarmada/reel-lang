@@ -1,16 +1,15 @@
-import { Timestamp } from "@react-native-firebase/firestore"
-import { GeneratedTopic } from "../../types/topic"
+import { Timestamp, doc, setDoc } from "@react-native-firebase/firestore"
+
+import { generateEducationalContent } from "./contentGenerator"
+import { GeneratedContent } from "./types"
 import { Session, SessionDuration } from "../../types/session"
-import { DifficultyLevel } from "../../types"
+import { GeneratedTopic } from "../../types/topic"
 import {
   firestore,
   FIREBASE_COLLECTIONS,
   FIREBASE_SUBCOLLECTIONS,
   getSessionSubcollectionDoc,
 } from "../../utils/firebase/config"
-import { doc, setDoc } from "@react-native-firebase/firestore"
-import { generateEducationalContent } from "./contentGenerator"
-import { GeneratedContent } from "./types"
 
 interface ContentBundle {
   session: Session

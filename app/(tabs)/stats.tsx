@@ -1,3 +1,12 @@
+import {
+  Clock,
+  Trophy,
+  Target,
+  BookOpen,
+  TrendingUp,
+  Flame,
+  Timer,
+} from "lucide-react-native"
 import React from "react"
 import {
   View,
@@ -7,27 +16,12 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
-  TextInput,
 } from "react-native"
-import { router } from "expo-router"
-import {
-  Search,
-  Filter,
-  Clock,
-  Trophy,
-  Target,
-  BookOpen,
-  Calendar,
-  TrendingUp,
-  Flame,
-  Timer,
-} from "lucide-react-native"
-import { useAuth } from "../../contexts/auth"
-import { LoadingSpinner } from "../../components/LoadingSpinner"
+
 import { ErrorMessage } from "../../components/ErrorMessage"
-import { format } from "date-fns"
-import { useUserTopics } from "../../hooks/useUserTopics"
+import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { theme } from "../../constants/theme"
+import { useAuth } from "../../contexts/auth"
 import {
   useUserStats,
   formatDuration,
@@ -40,7 +34,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window")
 export default function StatsScreen() {
   const { user } = useAuth()
   const { stats, loading, error } = useUserStats(user?.uid)
-  const { topics } = useUserTopics()
 
   if (loading) {
     return (
@@ -311,34 +304,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginTop: theme.spacing.xs,
   },
-  searchContainer: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.sm,
-    height: 44,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: theme.spacing.sm,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   topicList: {
     gap: theme.spacing.sm,
   },
@@ -360,9 +325,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.sm,
-  },
-  topicEmoji: {
-    fontSize: theme.typography.sizes.xl,
   },
   topicName: {
     fontSize: theme.typography.sizes.md,

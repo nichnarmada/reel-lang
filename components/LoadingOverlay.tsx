@@ -7,6 +7,7 @@ import {
   ViewStyle,
   Platform,
 } from "react-native"
+
 import { theme } from "../constants/theme"
 
 export interface LoadingOverlayProps {

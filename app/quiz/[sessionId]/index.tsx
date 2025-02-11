@@ -1,3 +1,5 @@
+import { Stack, useLocalSearchParams, router } from "expo-router"
+import { ChevronLeft } from "lucide-react-native"
 import React, { useState, useEffect } from "react"
 import {
   View,
@@ -7,24 +9,18 @@ import {
   Platform,
   ScrollView,
 } from "react-native"
-import { Stack, useLocalSearchParams, router } from "expo-router"
-import { ChevronLeft } from "lucide-react-native"
-import { LoadingSpinner } from "../../../components/LoadingSpinner"
+
 import { ErrorMessage } from "../../../components/ErrorMessage"
+import { LoadingSpinner } from "../../../components/LoadingSpinner"
+import { Question, Quiz } from "../../../types/quiz"
 import {
-  getDocument,
-  FIREBASE_COLLECTIONS,
   getSessionSubcollectionDoc,
   FIREBASE_SUBCOLLECTIONS,
 } from "../../../utils/firebase/config"
-import { Question, Quiz } from "../../../types/quiz"
 
 export default function QuizScreen() {
   const params = useLocalSearchParams()
   const { sessionId, quizId } = params
-
-  console.log("Quiz screen mounted with params:", params)
-  console.log("Parsed params:", { sessionId, quizId })
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questions, setQuestions] = useState<Question[]>([])
@@ -39,7 +35,6 @@ export default function QuizScreen() {
   useEffect(() => {
     const loadQuiz = async () => {
       try {
-        console.log("Loading quiz with ID:", quizId)
         const currentSessionId = Array.isArray(sessionId)
           ? sessionId[0]
           : sessionId
@@ -57,12 +52,6 @@ export default function QuizScreen() {
         }
 
         const quiz = quizSnapshot.data() as Quiz
-        console.log("Loaded quiz data:", {
-          id: quiz.id,
-          numberOfQuestions: quiz.questions?.length,
-          topics: quiz.metadata?.topics,
-          sessionId: quiz.sessionId,
-        })
 
         setQuizData(quiz)
         setQuestions(quiz.questions || [])
@@ -92,9 +81,6 @@ export default function QuizScreen() {
     questionId: string,
     selectedAnswer: string
   ) => {
-    const timeSpent =
-      Date.now() - (startTimes[currentQuestion.question] || Date.now())
-
     setSelectedAnswers((prev) => ({
       ...prev,
       [questionId]: selectedAnswer,

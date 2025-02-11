@@ -1,3 +1,4 @@
+import { Library } from "lucide-react-native"
 import React, { useState, useEffect, useCallback } from "react"
 import {
   View,
@@ -7,9 +8,7 @@ import {
   Modal,
   Platform,
 } from "react-native"
-import { Library } from "lucide-react-native"
-import { theme } from "../../constants/theme"
-import type { MenuDrawerProps } from "./types"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -18,7 +17,9 @@ import Animated, {
   interpolate,
   runOnJS,
 } from "react-native-reanimated"
-import { Gesture, GestureDetector } from "react-native-gesture-handler"
+
+import type { MenuDrawerProps } from "./types"
+import { theme } from "../../constants/theme"
 
 export const MenuDrawer: React.FC<MenuDrawerProps> = ({ items }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -106,11 +107,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({ items }) => {
         <Library size={24} color={theme.colors.primary} />
       </TouchableOpacity>
 
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        onRequestClose={handleClose}
-      >
+      <Modal visible={modalVisible} transparent onRequestClose={handleClose}>
         <Animated.View style={[styles.modalContainer, overlayStyle]}>
           <TouchableOpacity
             style={styles.modalOverlay}

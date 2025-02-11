@@ -1,5 +1,3 @@
-import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "../contexts/auth"
 import {
   collection,
   query,
@@ -10,8 +8,11 @@ import {
   deleteDoc,
   onSnapshot,
 } from "@react-native-firebase/firestore"
-import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
+import { useState, useEffect, useCallback } from "react"
+
+import { useAuth } from "../contexts/auth"
 import { GeneratedTopic } from "../types/topic"
+import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 
 export interface SavedTopic extends GeneratedTopic {
   id: string

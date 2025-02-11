@@ -1,6 +1,6 @@
+import { processAIResponse } from "./topicGenerator"
 import { GeneratedTopic } from "../../types/topic"
 import { topicSuggestionModel } from "../../utils/gemini/config"
-import { processAIResponse } from "./topicGenerator"
 
 const buildSingleTopicPrompt = (
   name: string,
@@ -55,8 +55,6 @@ export const generateSingleTopic = async (
       .replace(/```json\s*/g, "")
       .replace(/```\s*/g, "")
       .replace(/,(\s*[\]}])/g, "$1")
-
-    const parsed = JSON.parse(cleanedResponse)
 
     // Wrap the single object in an array for processAIResponse
     const processed = await processAIResponse(`[${cleanedResponse}]`, category)

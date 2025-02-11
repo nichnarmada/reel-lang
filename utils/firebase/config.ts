@@ -1,3 +1,4 @@
+import { getAuth } from "@react-native-firebase/auth"
 import {
   getFirestore,
   collection,
@@ -5,7 +6,6 @@ import {
   getDocs,
   setDoc,
 } from "@react-native-firebase/firestore"
-import { getAuth } from "@react-native-firebase/auth"
 
 // Firebase collection names
 export const FIREBASE_COLLECTIONS = {

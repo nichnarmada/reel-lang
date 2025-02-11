@@ -1,3 +1,6 @@
+import { Timestamp } from "@react-native-firebase/firestore"
+import { useLocalSearchParams, Stack, router } from "expo-router"
+import { ChevronLeft } from "lucide-react-native"
 import React, { useState, useCallback, useRef, useEffect } from "react"
 import {
   View,
@@ -11,34 +14,27 @@ import {
   Alert,
   BackHandler,
 } from "react-native"
-import { useLocalSearchParams, Stack, router } from "expo-router"
-import { LAYOUT } from "../../../constants/layout"
-import VideoPlayer from "../../../components/video/VideoPlayer"
-import { ChevronLeft } from "lucide-react-native"
-import SessionTimer from "../../../components/session/SessionTimer"
-import {
-  searchVideos,
-  getBestVideoUrl,
-  PexelsVideo,
-  getVideoThumbnail,
-} from "../../../utils/pexels"
-import { LoadingSpinner } from "../../../components/LoadingSpinner"
+
 import { ErrorMessage } from "../../../components/ErrorMessage"
 import { LoadingOverlay } from "../../../components/LoadingOverlay"
+import { LoadingSpinner } from "../../../components/LoadingSpinner"
+import SessionTimer from "../../../components/session/SessionTimer"
+import VideoPlayer from "../../../components/video/VideoPlayer"
+import { useAuth } from "../../../contexts/auth"
+import { useLearningSession } from "../../../hooks/useLearningSession"
+import { getContentForSession } from "../../../services/content/contentFlow"
+import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
+import { UserProgress } from "../../../types/quiz"
+import { Session } from "../../../types/session"
 import {
-  getCollection,
   getDocument,
   FIREBASE_COLLECTIONS,
 } from "../../../utils/firebase/config"
-import { useAuth } from "../../../contexts/auth"
-import { SAMPLE_QUESTIONS } from "../../../constants/quiz"
-import { Timestamp } from "@react-native-firebase/firestore"
-import { useLearningSession } from "../../../hooks/useLearningSession"
-import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
-import { Session } from "../../../types/session"
-import { getContentForSession } from "../../../services/content/contentFlow"
-import { GeneratedContent } from "../../../services/content/types"
-import { UserProgress } from "../../../types/quiz"
+import {
+  searchVideos,
+  getBestVideoUrl,
+  getVideoThumbnail,
+} from "../../../utils/pexels"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT
@@ -74,8 +70,6 @@ export default function ReelsScreen() {
   const initialScrollDone = useRef(false)
   const { user } = useAuth()
   const { pauseSession } = useLearningSession(user?.uid || "")
-  const [generatedContent, setGeneratedContent] =
-    useState<GeneratedContent | null>(null)
 
   // Add loading state for quiz generation
   const [quizLoading, setQuizLoading] = useState({
@@ -230,13 +224,6 @@ export default function ReelsScreen() {
         completedSegments: [],
       }
 
-      console.log("Starting quiz with session:", {
-        sessionId: session.id,
-        topicId: session.topicId,
-        topicName: session.topicName,
-        userId: session.userId,
-      })
-
       Alert.alert(
         "Time's Up!",
         "Your learning session is complete. Ready for a quick quiz?",
@@ -346,28 +333,7 @@ export default function ReelsScreen() {
           const currentSessionId = Array.isArray(sessionId)
             ? sessionId[0]
             : sessionId
-          const content = await getContentForSession(currentSessionId)
-          setGeneratedContent(content)
-
-          // Log the content structure
-          console.log("Loaded Generated Content:", {
-            sessionId: currentSessionId,
-            concepts: content?.structure.concepts.length,
-            videoScripts: content?.videoScripts.length,
-            totalDuration: content?.metadata.totalDuration,
-            difficulty: content?.metadata.difficulty,
-          })
-
-          // Log each video script
-          console.log(
-            "Video Scripts:",
-            content?.videoScripts.map((script) => ({
-              order: script.order,
-              duration: script.targetDuration,
-              hook: script.script.hooks,
-              keyPoints: script.keyPoints,
-            }))
-          )
+          await getContentForSession(currentSessionId)
         }
 
         // Continue with your existing video loading logic
@@ -480,7 +446,7 @@ export default function ReelsScreen() {
               <VideoPlayer
                 uri={item.uri}
                 paused={item.id !== visibleVideoId}
-                repeat={true}
+                repeat
                 onError={(error) =>
                   console.error(`Video ${item.id} error:`, error)
                 }

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
 import firestore from "@react-native-firebase/firestore"
+import { useEffect, useState } from "react"
+
 import { Session, SessionStatus, SessionProgress } from "../types/session"
 
 // Firebase collection names

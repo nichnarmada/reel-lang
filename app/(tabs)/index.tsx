@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from "react"
+import { router } from "expo-router"
+import { Shuffle, Send } from "lucide-react-native"
+import React, { useState, useEffect, useMemo } from "react"
 import {
   View,
   Text,
@@ -10,18 +12,6 @@ import {
   Platform,
   Modal,
 } from "react-native"
-import { router } from "expo-router"
-import { useAuth } from "../../contexts/auth"
-import { LoadingSpinner } from "../../components/LoadingSpinner"
-import { ErrorMessage } from "../../components/ErrorMessage"
-import { Search, Shuffle, Send } from "lucide-react-native"
-import { allCategories } from "@/constants/topics"
-import { useUserPreferences } from "../../hooks/useUserPreferences"
-import { useTopicSuggestions } from "../../hooks/useTopicSuggestions"
-import { colorManager } from "../../constants/categoryColors"
-import { GeneratedTopic } from "../../types/topic"
-import { generateTopicSuggestions } from "../../services/topics/topicGenerator"
-import { theme } from "../../constants/theme"
 import Animated, {
   useAnimatedStyle,
   withTiming,
@@ -29,6 +19,16 @@ import Animated, {
   interpolate,
   runOnJS,
 } from "react-native-reanimated"
+
+import { ErrorMessage } from "../../components/ErrorMessage"
+import { LoadingSpinner } from "../../components/LoadingSpinner"
+import { colorManager } from "../../constants/categoryColors"
+import { theme } from "../../constants/theme"
+import { useAuth } from "../../contexts/auth"
+import { useTopicSuggestions } from "../../hooks/useTopicSuggestions"
+import { useUserPreferences } from "../../hooks/useUserPreferences"
+import { generateTopicSuggestions } from "../../services/topics/topicGenerator"
+import { GeneratedTopic } from "../../types/topic"
 
 interface AIModalProps {
   visible: boolean
@@ -191,11 +191,8 @@ const AIThinkingModal = ({
 
 export default function DiscoverScreen() {
   const { user } = useAuth()
-  const {
-    preferences,
-    loading: userPreferencesLoading,
-    error: userPreferencesError,
-  } = useUserPreferences(user?.uid || "")
+  const { loading: userPreferencesLoading, error: userPreferencesError } =
+    useUserPreferences(user?.uid || "")
   const {
     displayedSuggestions,
     loading: topicSuggestionsLoading,
@@ -208,26 +205,6 @@ export default function DiscoverScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isModalVisible, setIsModalVisible] = useState(false)
-
-  // Function to shuffle array
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const newArray = [...array]
-    for (let i = newArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[newArray[i], newArray[j]] = [newArray[j], newArray[i]]
-    }
-    return newArray
-  }
-
-  // State for suggested topics
-  const [suggestedTopics, setSuggestedTopics] = useState(() =>
-    shuffleArray(allCategories).slice(0, 6)
-  )
-
-  // Function to get new suggestions
-  const refreshSuggestions = () => {
-    setSuggestedTopics(shuffleArray(allCategories).slice(0, 6))
-  }
 
   // Function to handle topic selection
   const handleTopicSelect = (topic: GeneratedTopic) => {
@@ -472,9 +449,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 600,
   },
-  searchIcon: {
-    marginRight: 12,
-  },
   searchInput: {
     flex: 1,
     fontSize: 16,
@@ -485,105 +459,6 @@ const styles = StyleSheet.create({
   sendButton: {
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.md,
-  },
-  section: {
-    marginBottom: theme.spacing.xxl,
-  },
-  centeredSection: {
-    paddingHorizontal: theme.spacing.xl,
-    alignItems: "center",
-  },
-  sectionTitle: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.semibold,
-    marginBottom: theme.spacing.md,
-    color: theme.colors.text.primary,
-    textAlign: "center",
-  },
-  goalsList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    marginBottom: theme.spacing.md,
-  },
-  goalBadge: {
-    backgroundColor: theme.colors.background.secondary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-    marginRight: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: theme.colors.border.medium,
-  },
-  goalBadgeText: {
-    color: theme.colors.text.primary,
-    fontSize: theme.typography.sizes.sm,
-    marginRight: theme.spacing.sm,
-  },
-  removeButton: {
-    padding: theme.spacing.xs,
-  },
-  contentScrollContainer: {
-    paddingHorizontal: theme.spacing.xl,
-  },
-  topicsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    width: "100%",
-    maxWidth: 600,
-  },
-  topicButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border.medium,
-    borderRadius: theme.borderRadius.full,
-    marginRight: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.background.primary,
-  },
-  topicIcon: {
-    marginRight: theme.spacing.xs,
-  },
-  topicText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.primary,
-  },
-  contentCard: {
-    width: 200,
-    marginRight: theme.spacing.md,
-    backgroundColor: theme.colors.background.primary,
-    borderRadius: theme.borderRadius.lg,
-    ...theme.shadows.small,
-    borderWidth: 1,
-    borderColor: theme.colors.border.medium,
-  },
-  contentImage: {
-    width: "100%",
-    height: 120,
-    borderTopLeftRadius: theme.borderRadius.lg,
-    borderTopRightRadius: theme.borderRadius.lg,
-  },
-  contentPlaceholder: {
-    width: "100%",
-    height: 120,
-    borderTopLeftRadius: theme.borderRadius.lg,
-    borderTopRightRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.background.secondary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  contentTitle: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-    margin: theme.spacing.md,
-    color: theme.colors.text.primary,
   },
   centerContainer: {
     flex: 1,
@@ -634,9 +509,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     marginRight: theme.spacing.xs,
     marginBottom: theme.spacing.xs,
-  },
-  topicBadgeIcon: {
-    marginRight: theme.spacing.xs,
   },
   topicBadgeText: {
     fontSize: theme.typography.sizes.sm,

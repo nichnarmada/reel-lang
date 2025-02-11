@@ -1,7 +1,3 @@
-import { useState, useEffect } from "react"
-import { useAuth } from "../contexts/auth"
-import { GeneratedTopic } from "../types/topic"
-import { UserGeneratedTopic } from "../types/user"
 import {
   collection,
   doc,
@@ -10,10 +6,14 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
-  setDoc,
   Timestamp,
   where,
 } from "@react-native-firebase/firestore"
+import { useState, useEffect } from "react"
+
+import { useAuth } from "../contexts/auth"
+import { GeneratedTopic } from "../types/topic"
+import { UserGeneratedTopic } from "../types/user"
 import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 
 interface TopicWithStats extends UserGeneratedTopic {

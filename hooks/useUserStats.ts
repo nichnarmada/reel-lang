@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
 import firestore from "@react-native-firebase/firestore"
+import { useEffect, useState } from "react"
+
 import { UserStats } from "../types/user"
 
 export function useUserStats(userId: string | undefined) {

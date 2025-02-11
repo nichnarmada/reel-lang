@@ -1,16 +1,21 @@
-import { Timestamp } from "@react-native-firebase/firestore"
+import {
+  Timestamp,
+  doc,
+  getDoc,
+  setDoc,
+} from "@react-native-firebase/firestore"
+
+import { GeneratedTopic } from "../../types/topic"
+import {
+  PromptContext,
+  TopicGenerationInput,
+} from "../../types/topicGeneration"
+import { firestore } from "../../utils/firebase/config"
 import {
   topicSuggestionModel,
   MAX_TOPICS_PER_CATEGORY,
   TOPIC_CACHE_DURATION,
 } from "../../utils/gemini/config"
-import {
-  PromptContext,
-  TopicGenerationInput,
-} from "../../types/topicGeneration"
-import { GeneratedTopic } from "../../types/topic"
-import { firestore } from "../../utils/firebase/config"
-import { doc, getDoc, setDoc } from "@react-native-firebase/firestore"
 
 const CACHE_COLLECTION = "topicSuggestionCache"
 
@@ -213,9 +218,8 @@ export const generateTopicSuggestions = async (
           topicNumber: input.topicNumber || 3,
         }
 
-        const { success, error, suggestions } = await generateForCategory(
-          context
-        )
+        const { success, error, suggestions } =
+          await generateForCategory(context)
 
         if (success && suggestions.length > 0) {
           // Limit the number of suggestions per category

@@ -1,3 +1,12 @@
+import { useRouter } from "expo-router"
+import {
+  Bell,
+  Share2,
+  HelpCircle,
+  ChevronRight,
+  Brain,
+  Film,
+} from "lucide-react-native"
 import React from "react"
 import {
   View,
@@ -8,19 +17,10 @@ import {
   Switch,
   Image,
 } from "react-native"
-import { useAuth } from "../../contexts/auth"
-import {
-  Settings,
-  Bell,
-  Share2,
-  HelpCircle,
-  ChevronRight,
-  Brain,
-  Film,
-} from "lucide-react-native"
+
 import { HEADER_PADDING } from "../../constants/layout"
-import { useRouter } from "expo-router"
 import { theme } from "../../constants/theme"
+import { useAuth } from "../../contexts/auth"
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth()

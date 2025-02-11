@@ -1,19 +1,15 @@
 import { Timestamp } from "@react-native-firebase/firestore"
-import { GeneratedTopic } from "../../types/topic"
+
+import { DifficultyLevel } from "../../types"
 import {
   Question,
   Quiz,
-  QuizMetadata,
   UserProgress,
-  QuizRequirements,
-  QuestionGenerationStrategy,
   getQuizRequirements,
   getGenerationStrategy,
 } from "../../types/quiz"
+import { GeneratedTopic } from "../../types/topic"
 import { topicSuggestionModel } from "../../utils/gemini/config"
-import { firestore } from "../../utils/firebase/config"
-import { doc, setDoc } from "@react-native-firebase/firestore"
-import { DifficultyLevel } from "../../types"
 import { GeneratedContent, EducationalConcept } from "../content/types"
 
 const generateConceptQuestions = async (
@@ -64,7 +60,7 @@ Return in JSON format:
         },
       ]
     } catch (parseError) {
-      console.error("Failed to parse concept question JSON:", cleanedResponse)
+      console.error("Failed to parse concept question JSON:", parseError)
       return []
     }
   } catch (error) {
@@ -151,7 +147,7 @@ Return a JSON object with this exact structure (no markdown, no backticks):
         },
       ]
     } catch (parseError) {
-      console.error("Failed to parse key point question JSON:", cleanedResponse)
+      console.error("Failed to parse key point question JSON:", parseError)
       return []
     }
   } catch (error) {
@@ -216,7 +212,7 @@ Return in JSON format:
         },
       ]
     } catch (parseError) {
-      console.error("Failed to parse recap question JSON:", cleanedResponse)
+      console.error("Failed to parse recap question JSON:", parseError)
       return []
     }
   } catch (error) {
@@ -265,7 +261,7 @@ export const createQuiz = async (
         targetQuestions: strategy[concept.segmentType],
       })
 
-      let conceptQuestions: Question[] = []
+      const conceptQuestions: Question[] = []
       const targetQuestionCount = strategy[concept.segmentType]
 
       // Skip if strategy indicates 0 questions for this type
@@ -326,11 +322,14 @@ export const createQuiz = async (
 
     console.log("\nQuiz generation summary:", {
       totalQuestions: questions.length,
-      questionsByType: questions.reduce((acc, q) => {
-        acc[q.segmentType || "unknown"] =
-          (acc[q.segmentType || "unknown"] || 0) + 1
-        return acc
-      }, {} as Record<string, number>),
+      questionsByType: questions.reduce(
+        (acc, q) => {
+          acc[q.segmentType || "unknown"] =
+            (acc[q.segmentType || "unknown"] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>
+      ),
       minRequired: requirements.minQuestions,
       maxAllowed: requirements.maxQuestions,
     })

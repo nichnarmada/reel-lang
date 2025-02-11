@@ -1,10 +1,5 @@
 import { Timestamp } from "@react-native-firebase/firestore"
-import { topicSuggestionModel } from "../../utils/gemini/config"
-import { GeneratedTopic } from "../../types/topic"
-import { DifficultyLevel } from "../../types"
-import { SessionDuration } from "../../types/session"
-import { firestore } from "../../utils/firebase/config"
-import { doc, setDoc } from "@react-native-firebase/firestore"
+
 import {
   EducationalStructure,
   VideoSegmentScript,
@@ -12,6 +7,10 @@ import {
   calculateSegmentPlan,
   SegmentDurationGuide,
 } from "./types"
+import { DifficultyLevel } from "../../types"
+import { SessionDuration } from "../../types/session"
+import { GeneratedTopic } from "../../types/topic"
+import { topicSuggestionModel } from "../../utils/gemini/config"
 
 const buildEducationalContentPrompt = (
   topic: GeneratedTopic,
@@ -225,9 +224,8 @@ export const generateEducationalContent = async (
       difficulty,
       segmentPlan
     )
-    const structureResult = await topicSuggestionModel.generateContent(
-      structurePrompt
-    )
+    const structureResult =
+      await topicSuggestionModel.generateContent(structurePrompt)
     const structure = await processEducationalContent(
       structureResult.response.text(),
       difficulty,
@@ -240,9 +238,8 @@ export const generateEducationalContent = async (
 
     // 2. Generate video scripts based on the structure
     const scriptPrompt = buildVideoScriptPrompt(topic, structure, segmentPlan)
-    const scriptResult = await topicSuggestionModel.generateContent(
-      scriptPrompt
-    )
+    const scriptResult =
+      await topicSuggestionModel.generateContent(scriptPrompt)
     const videoScripts = await processVideoScripts(
       scriptResult.response.text(),
       segmentPlan

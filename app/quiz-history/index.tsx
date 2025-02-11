@@ -1,3 +1,6 @@
+import analytics from "@react-native-firebase/analytics"
+import { Stack, router } from "expo-router"
+import { ChevronLeft, ChevronRight } from "lucide-react-native"
 import React, { useState, useEffect } from "react"
 import {
   View,
@@ -8,18 +11,16 @@ import {
   Platform,
   RefreshControl,
 } from "react-native"
-import { Stack, router } from "expo-router"
-import { ChevronLeft, ChevronRight } from "lucide-react-native"
+
+import { ErrorMessage } from "../../components/ErrorMessage"
+import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { useAuth } from "../../contexts/auth"
+import { Quiz } from "../../types/quiz"
 import {
   getCollection,
   getDocument,
   FIREBASE_COLLECTIONS,
 } from "../../utils/firebase/config"
-import { Quiz } from "../../types/quiz"
-import { LoadingSpinner } from "../../components/LoadingSpinner"
-import { ErrorMessage } from "../../components/ErrorMessage"
-import analytics from "@react-native-firebase/analytics"
 
 type QuizHistoryItem = Quiz & {
   topicName: string // We'll denormalize this for convenience

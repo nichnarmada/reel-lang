@@ -1,11 +1,11 @@
 import { Tabs } from "expo-router"
 import {
-  Film,
   UserRoundPen,
   Telescope,
   ChartNoAxesCombined,
   GraduationCap,
 } from "lucide-react-native"
+
 import { LAYOUT } from "../../constants/layout"
 import { theme } from "../../constants/theme"
 

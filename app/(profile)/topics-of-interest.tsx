@@ -1,3 +1,5 @@
+import { Stack, router } from "expo-router"
+import { ChevronLeft, Search, X, Tag, Settings2 } from "lucide-react-native"
 import React, { useState } from "react"
 import {
   View,
@@ -9,13 +11,12 @@ import {
   Platform,
   Alert,
 } from "react-native"
-import { Stack, router } from "expo-router"
-import { ChevronLeft, Search, X, Tag, Settings2 } from "lucide-react-native"
-import { UserGeneratedTopic } from "../../types/user"
-import { useUserTopics } from "../../hooks/useUserTopics"
-import { LoadingSpinner } from "../../components/LoadingSpinner"
+
 import { ErrorMessage } from "../../components/ErrorMessage"
+import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { theme } from "../../constants/theme"
+import { useUserTopics } from "../../hooks/useUserTopics"
+import { UserGeneratedTopic } from "../../types/user"
 
 interface TopicItemProps {
   topic: UserGeneratedTopic
@@ -35,6 +36,7 @@ const TopicItem = ({ topic, onRemove }: TopicItemProps) => {
             try {
               await onRemove()
             } catch (err) {
+              console.error("Error removing topic:", err)
               Alert.alert("Error", "Failed to remove topic. Please try again.")
             }
           },

@@ -1,3 +1,5 @@
+import { Stack, router } from "expo-router"
+import { ChevronLeft, Star } from "lucide-react-native"
 import React from "react"
 import {
   View,
@@ -7,13 +9,12 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native"
-import { Stack, router } from "expo-router"
-import { ChevronLeft, Star } from "lucide-react-native"
-import { LoadingSpinner } from "../components/LoadingSpinner"
+
 import { ErrorMessage } from "../components/ErrorMessage"
+import { LoadingSpinner } from "../components/LoadingSpinner"
 import { getConsistentColor } from "../constants/categoryColors"
-import { capitalizeText } from "../utils/utils"
 import { useSavedTopics, SavedTopic } from "../hooks/useSavedTopics"
+import { capitalizeText } from "../utils/utils"
 
 export default function SavedTopicsScreen() {
   const { topics, loading, error } = useSavedTopics()

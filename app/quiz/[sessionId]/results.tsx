@@ -1,3 +1,11 @@
+import { Stack, useLocalSearchParams, router } from "expo-router"
+import {
+  ChevronLeft,
+  Trophy,
+  RotateCcw,
+  Play,
+  BookPlus,
+} from "lucide-react-native"
 import React, { useEffect, useState } from "react"
 import {
   View,
@@ -8,27 +16,20 @@ import {
   ScrollView,
   Alert,
 } from "react-native"
-import { Stack, useLocalSearchParams, router } from "expo-router"
-import {
-  ChevronLeft,
-  Trophy,
-  RotateCcw,
-  Play,
-  BookPlus,
-} from "lucide-react-native"
+
+import { ErrorMessage } from "../../../components/ErrorMessage"
+import { LoadingOverlay } from "../../../components/LoadingOverlay"
+import { LoadingSpinner } from "../../../components/LoadingSpinner"
+import { theme } from "../../../constants/theme"
+import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
+import { Quiz } from "../../../types/quiz"
+import { Session } from "../../../types/session"
 import {
   getDocument,
   FIREBASE_COLLECTIONS,
   getSessionSubcollectionDoc,
   FIREBASE_SUBCOLLECTIONS,
 } from "../../../utils/firebase/config"
-import { Quiz } from "../../../types/quiz"
-import { LoadingSpinner } from "../../../components/LoadingSpinner"
-import { ErrorMessage } from "../../../components/ErrorMessage"
-import { LoadingOverlay } from "../../../components/LoadingOverlay"
-import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
-import { Session } from "../../../types/session"
-import { theme } from "../../../constants/theme"
 
 export default function QuizResultsScreen() {
   const { sessionId, score, quizId, totalQuestions } = useLocalSearchParams()

@@ -1,6 +1,7 @@
 import React from "react"
 import { StyleSheet, TouchableWithoutFeedback } from "react-native"
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated"
+
 import { FLOATING_MENU } from "./constants"
 
 interface MenuBackdropProps {

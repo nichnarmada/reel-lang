@@ -1,3 +1,6 @@
+import { Timestamp, updateDoc, setDoc } from "@react-native-firebase/firestore"
+import { useLocalSearchParams, Stack, router } from "expo-router"
+import { ChevronLeft, Play, Clock, Sparkles, Star } from "lucide-react-native"
 import React, { useEffect, useState, useRef } from "react"
 import {
   View,
@@ -7,29 +10,9 @@ import {
   TouchableOpacity,
   Platform,
   Modal,
-  Dimensions,
   Alert,
 } from "react-native"
-import { useLocalSearchParams, Stack, router } from "expo-router"
-import { GeneratedTopic, RelatedTopic } from "../../types/topic"
-import { UserGeneratedTopic } from "../../types/user"
-import { ErrorMessage } from "../../components/ErrorMessage"
-import { ChevronLeft, Play, Clock, Sparkles, Star } from "lucide-react-native"
-import { useAuth } from "../../contexts/auth"
-import {
-  FIREBASE_SUBCOLLECTIONS,
-  getUserSubcollectionDoc,
-} from "../../utils/firebase/config"
-import { Timestamp, updateDoc, setDoc } from "@react-native-firebase/firestore"
-import { DifficultyLevel } from "../../types"
-import { SessionDuration } from "@/types/session"
-import { capitalizeText } from "../../utils/utils"
-import { colorManager } from "../../constants/categoryColors"
-import { generateSingleTopic } from "../../services/topics/singleTopicGenerator"
-import { useSavedTopics } from "../../hooks/useSavedTopics"
-import { theme } from "../../constants/theme"
-import { LoadingOverlay } from "../../components/LoadingOverlay"
-import { startContentGeneration } from "../../services/content/contentFlow"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -40,16 +23,25 @@ import Animated, {
   withRepeat,
   runOnJS,
 } from "react-native-reanimated"
-import { Gesture, GestureDetector } from "react-native-gesture-handler"
 
-const WINDOW_WIDTH = Dimensions.get("window").width
+import { ErrorMessage } from "../../components/ErrorMessage"
+import { LoadingOverlay } from "../../components/LoadingOverlay"
+import { colorManager } from "../../constants/categoryColors"
+import { theme } from "../../constants/theme"
+import { useAuth } from "../../contexts/auth"
+import { useSavedTopics } from "../../hooks/useSavedTopics"
+import { startContentGeneration } from "../../services/content/contentFlow"
+import { generateSingleTopic } from "../../services/topics/singleTopicGenerator"
+import { DifficultyLevel } from "../../types"
+import { GeneratedTopic, RelatedTopic } from "../../types/topic"
+import { UserGeneratedTopic } from "../../types/user"
+import {
+  FIREBASE_SUBCOLLECTIONS,
+  getUserSubcollectionDoc,
+} from "../../utils/firebase/config"
+import { capitalizeText } from "../../utils/utils"
 
-interface TopicDetailsParams {
-  id: string
-  isGenerated?: string
-  category?: string
-  name?: string
-}
+import { SessionDuration } from "@/types/session"
 
 type DisplayTopic = GeneratedTopic & { id: string }
 
@@ -130,10 +122,6 @@ export default function TopicDetailsScreen() {
 
   const starStyle = useAnimatedStyle(() => ({
     transform: [{ scale: starScale.value }],
-  }))
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseAnim.value }],
   }))
 
   const handleCloseModal = () => {
@@ -276,7 +264,7 @@ export default function TopicDetailsScreen() {
     left: 0,
     width: `${interpolate(lineProgress.value, [1, 2], [0, 100], "clamp")}%`,
     height: 2,
-    backgroundColor: theme.colors.text.secondary,
+    backgroundColor: theme.colors.primary,
   }))
 
   const handleStartLearning = async (duration: SessionDuration) => {
@@ -353,26 +341,6 @@ export default function TopicDetailsScreen() {
         "Error",
         "Failed to start learning session. Please try again."
       )
-    }
-  }
-
-  const handleDifficultySelect = async (difficulty: DifficultyLevel) => {
-    if (!topic || !user || !isGenerated) return
-
-    try {
-      const topicRef = getUserSubcollectionDoc(
-        user.uid,
-        FIREBASE_SUBCOLLECTIONS.USER.GENERATED_TOPICS,
-        topic.id
-      )
-
-      await updateDoc(topicRef, {
-        selectedDifficulty: difficulty,
-        lastAccessed: Timestamp.now(),
-      })
-    } catch (err) {
-      console.error("Error updating difficulty:", err)
-      // Show error to user
     }
   }
 
@@ -503,8 +471,8 @@ export default function TopicDetailsScreen() {
                   {level === "beginner"
                     ? "Perfect for first-time learners"
                     : level === "intermediate"
-                    ? "For those with basic understanding"
-                    : "Deep dive into complex concepts"}
+                      ? "For those with basic understanding"
+                      : "Deep dive into complex concepts"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -728,8 +696,8 @@ export default function TopicDetailsScreen() {
         {configStep === "difficulty"
           ? renderDifficultyStep()
           : configStep === "duration"
-          ? renderDurationStep()
-          : renderConfirmStep()}
+            ? renderDurationStep()
+            : renderConfirmStep()}
       </Animated.View>
     )
   }
@@ -922,7 +890,7 @@ export default function TopicDetailsScreen() {
       {topic && (
         <Modal
           visible={modalVisible}
-          transparent={true}
+          transparent
           onRequestClose={handleCloseModal}
         >
           <Animated.View style={[styles.modalContainer, modalStyle]}>
@@ -953,9 +921,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.primary,
     paddingBottom: theme.spacing.xxl, // For floating button
   },
-  contentContainer: {
-    paddingBottom: theme.spacing.lg,
-  },
   floatingButtonContainer: {
     position: "absolute",
     bottom: Platform.OS === "ios" ? 34 : theme.spacing.lg,
@@ -981,11 +946,6 @@ const styles = StyleSheet.create({
   backButton: {
     padding: theme.spacing.sm,
     marginRight: theme.spacing.sm,
-  },
-  modalBackButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: theme.spacing.xl,
   },
   headerTitleContainer: {
     flex: 1,
@@ -1055,64 +1015,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     color: theme.colors.text.primary,
   },
-  videoPreviewsContainer: {
-    gap: 12,
-    paddingRight: 16,
-  },
-  videoPreview: {
-    width: WINDOW_WIDTH * 0.7,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  videoThumbnail: {
-    width: "100%",
-    height: 120,
-    backgroundColor: "#f0f0f0",
-  },
-  videoInfo: {
-    padding: 12,
-  },
-  videoTitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 4,
-    color: "#000",
-  },
-  videoMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  videoDuration: {
-    fontSize: 12,
-    color: "#666",
-  },
-  videoDifficulty: {
-    fontSize: 12,
-    color: "#8a2be2",
-  },
-  subtopicsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  subtopicButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#f8f9fa",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  subtopicText: {
-    fontSize: 14,
-    color: "#333",
-  },
   startLearningButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1165,25 +1067,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
     lineHeight: 24,
   },
-  durationOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.sm,
-  },
-  durationText: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.text.primary,
-    marginLeft: theme.spacing.md,
-    flex: 1,
-  },
-  durationSubtext: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
-  },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
@@ -1194,68 +1077,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text.inverse,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.weights.semibold,
-  },
-  modalBackButtonText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
-    marginLeft: theme.spacing.xs,
-  },
-  aiGeneratedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#8a2be215",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-    marginTop: 8,
-  },
-  aiGeneratedText: {
-    fontSize: 12,
-    color: "#8a2be2",
-    marginLeft: 4,
-    fontWeight: "500",
-  },
-  aiInsight: {
-    fontSize: 14,
-    color: "#666",
-    fontStyle: "italic",
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  contentCard: {
-    width: 200,
-    marginRight: 12,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  contentImage: {
-    width: "100%",
-    height: 120,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  contentPlaceholder: {
-    width: "100%",
-    height: 120,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    backgroundColor: "#f8f9fa",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  contentTitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    margin: 12,
-    color: "#1a1a1a",
   },
   relatedTopicsContainer: {
     flexDirection: "row",

@@ -1,3 +1,12 @@
+import {
+  Play,
+  Volume2,
+  VolumeX,
+  ThumbsUp,
+  ThumbsDown,
+  Bookmark,
+  BookmarkCheck,
+} from "lucide-react-native"
 import React, { useState, useRef, useEffect } from "react"
 import {
   View,
@@ -7,21 +16,6 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native"
-import Video, { VideoRef } from "react-native-video"
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  ThumbsUp,
-  ThumbsDown,
-  Bookmark,
-  BookmarkCheck,
-  Heart,
-} from "lucide-react-native"
-import { LAYOUT } from "../../constants/layout"
-import { useSavedVideos } from "../../hooks/useSavedVideos"
-import { theme } from "../../constants/theme"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import Animated, {
   useAnimatedStyle,
@@ -31,6 +25,11 @@ import Animated, {
   withSequence,
   runOnJS,
 } from "react-native-reanimated"
+import Video, { VideoRef } from "react-native-video"
+
+import { LAYOUT } from "../../constants/layout"
+import { theme } from "../../constants/theme"
+import { useSavedVideos } from "../../hooks/useSavedVideos"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const CONTAINER_HEIGHT = SCREEN_HEIGHT - LAYOUT.TAB_BAR_HEIGHT

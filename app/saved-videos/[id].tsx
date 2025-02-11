@@ -1,3 +1,5 @@
+import { Stack, useLocalSearchParams, router } from "expo-router"
+import { ChevronLeft } from "lucide-react-native"
 import React, { useState, useCallback, useRef, useEffect } from "react"
 import {
   View,
@@ -7,11 +9,10 @@ import {
   FlatList,
   ViewToken,
   Text,
+  TouchableOpacity,
 } from "react-native"
-import { Stack, useLocalSearchParams, router } from "expo-router"
-import { ChevronLeft } from "lucide-react-native"
+
 import VideoPlayer from "../../components/video/VideoPlayer"
-import { TouchableOpacity } from "react-native"
 import { useSavedVideos } from "../../hooks/useSavedVideos"
 import { SavedVideo } from "../../types/user"
 import { getVideoDetails, getBestVideoUrl } from "../../utils/pexels"
@@ -67,7 +68,7 @@ export default function SavedVideoPlayerScreen() {
             <VideoPlayer
               uri={videoUrls[item.videoId]}
               paused={item.id !== visibleVideoId}
-              repeat={true}
+              repeat
               onError={(error) =>
                 console.error(`Video ${item.id} error:`, error)
               }

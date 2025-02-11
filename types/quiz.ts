@@ -1,7 +1,6 @@
 import { DifficultyLevel, Timestamp } from "."
-import { VideoSegmentType } from "./content"
+import { VideoSegmentType, GeneratedContent } from "./content"
 import { Session, SessionDuration } from "./session"
-import { GeneratedContent } from "./content"
 
 export interface UserProgress {
   videosWatched: number

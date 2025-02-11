@@ -1,3 +1,5 @@
+import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth"
+import { Timestamp } from "@react-native-firebase/firestore"
 import {
   createContext,
   useContext,
@@ -5,7 +7,8 @@ import {
   useState,
   ReactNode,
 } from "react"
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth"
+
+import { User, UserStats } from "../types/user"
 import {
   signInWithEmail,
   signUpWithEmail,
@@ -14,8 +17,6 @@ import {
   AuthError,
 } from "../utils/firebase/auth"
 import { getDocument, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
-import { User, UserStats } from "../types/user"
-import { Timestamp } from "@react-native-firebase/firestore"
 
 interface AuthContextType {
   user: FirebaseAuthTypes.User | null

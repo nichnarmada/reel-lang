@@ -1,18 +1,13 @@
-import { Timestamp } from "@react-native-firebase/firestore"
-import { router } from "expo-router"
+import { Timestamp, getDoc, setDoc } from "@react-native-firebase/firestore"
+
 import { createQuiz } from "./quizGenerator"
+import { UserProgress } from "../../types/quiz"
 import { Session } from "../../types/session"
+import { GeneratedTopic } from "../../types/topic"
 import {
-  getDocument,
-  FIREBASE_COLLECTIONS,
   FIREBASE_SUBCOLLECTIONS,
-  getUserSubcollectionDoc,
   getSessionSubcollectionDoc,
 } from "../../utils/firebase/config"
-import { GeneratedTopic } from "../../types/topic"
-import { doc, getDoc, setDoc } from "@react-native-firebase/firestore"
-import { firestore } from "../../utils/firebase/config"
-import { UserProgress } from "../../types/quiz"
 import { GeneratedContent } from "../content/types"
 
 export const startQuizAfterSession = async (

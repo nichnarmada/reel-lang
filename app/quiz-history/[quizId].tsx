@@ -1,3 +1,5 @@
+import { useLocalSearchParams, router } from "expo-router"
+import { ChevronLeft } from "lucide-react-native"
 import React, { useState, useEffect } from "react"
 import {
   View,
@@ -7,19 +9,18 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native"
-import { useLocalSearchParams, router } from "expo-router"
-import { ChevronLeft } from "lucide-react-native"
+
+import { ErrorMessage } from "../../components/ErrorMessage"
+import { LoadingSpinner } from "../../components/LoadingSpinner"
+import { theme } from "../../constants/theme"
 import { useAuth } from "../../contexts/auth"
+import { Quiz, Question, UserResponse } from "../../types/quiz"
 import {
   getDocument,
   FIREBASE_COLLECTIONS,
   getSessionSubcollectionDoc,
   FIREBASE_SUBCOLLECTIONS,
 } from "../../utils/firebase/config"
-import { Quiz, Question, UserResponse } from "../../types/quiz"
-import { LoadingSpinner } from "../../components/LoadingSpinner"
-import { ErrorMessage } from "../../components/ErrorMessage"
-import { theme } from "../../constants/theme"
 
 type QuizWithTopic = Quiz & {
   topicName: string
@@ -253,18 +254,6 @@ const styles = StyleSheet.create({
   percentage: {
     fontSize: 18,
     fontWeight: "600",
-  },
-  filterButton: {
-    margin: 16,
-    padding: 12,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  filterButtonText: {
-    fontSize: 14,
-    color: "#8a2be2",
-    fontWeight: "500",
   },
   questionsContainer: {
     padding: theme.spacing.md,

@@ -1,3 +1,13 @@
+import { router } from "expo-router"
+import {
+  Play,
+  Calendar,
+  Timer,
+  Bookmark,
+  Star,
+  Pause,
+  History,
+} from "lucide-react-native"
 import React from "react"
 import {
   View,
@@ -7,28 +17,13 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native"
-import { useAuth } from "../../contexts/auth"
+
 import { ErrorMessage } from "../../components/ErrorMessage"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
-import {
-  Play,
-  Clock,
-  BookOpen,
-  Flame,
-  Calendar,
-  Timer,
-  Bookmark,
-  Star,
-  Pause,
-  History,
-} from "lucide-react-native"
-import { router } from "expo-router"
-import { theme } from "../../constants/theme"
-import { useSavedTopics } from "../../hooks/useSavedTopics"
-import { useLearningSession } from "../../hooks/useLearningSession"
-import { format } from "date-fns"
-import { Session } from "../../types/session"
 import { MenuDrawer } from "../../components/menu-drawer"
+import { theme } from "../../constants/theme"
+import { useAuth } from "../../contexts/auth"
+import { useLearningSession } from "../../hooks/useLearningSession"
 
 export default function LearningScreen() {
   const { user } = useAuth()
@@ -368,24 +363,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 120,
     gap: theme.spacing.sm,
-  },
-  headerButtons: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-  },
-  savedButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.background.secondary,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
-  },
-  savedButtonText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.primary,
-    fontWeight: theme.typography.weights.medium,
   },
   sessionsList: {
     gap: theme.spacing.sm,

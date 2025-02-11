@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react"
-import { GeneratedTopic } from "../types/topic"
-import { generateTopicSuggestions } from "../services/topics/topicGenerator"
-import { useUserPreferences } from "./useUserPreferences"
 import { doc, setDoc } from "@react-native-firebase/firestore"
-import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
+import { useState, useEffect, useCallback } from "react"
+
+import { useUserPreferences } from "./useUserPreferences"
+import { generateTopicSuggestions } from "../services/topics/topicGenerator"
+import { GeneratedTopic } from "../types/topic"
 import { UserGeneratedTopic } from "../types/user"
+import { firestore, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 
 const MAX_DISPLAYED_TOPICS = 6
 

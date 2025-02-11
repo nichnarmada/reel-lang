@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from "react"
-import { getDocument, getCollection } from "../utils/firebase/config"
-import { FIREBASE_COLLECTIONS } from "../utils/firebase/config"
-import { UserPreferences, UserProfile } from "../types/user"
 import { Timestamp, setDoc } from "@react-native-firebase/firestore"
+import { useState, useCallback, useEffect } from "react"
+
 import { useAuth } from "../contexts/auth"
+import { UserPreferences, UserProfile } from "../types/user"
+import { getDocument, FIREBASE_COLLECTIONS } from "../utils/firebase/config"
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   defaultSessionLength: 5,

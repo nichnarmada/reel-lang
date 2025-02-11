@@ -1,5 +1,6 @@
-import { DifficultyLevel } from "."
 import { Timestamp } from "firebase/firestore"
+
+import { DifficultyLevel } from "."
 
 export interface RelatedTopic {
   name: string

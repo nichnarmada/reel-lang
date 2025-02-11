@@ -1,6 +1,7 @@
-import { auth } from "./config"
-import { GoogleSignin } from "@react-native-google-signin/google-signin"
 import auth_module from "@react-native-firebase/auth"
+import { GoogleSignin } from "@react-native-google-signin/google-signin"
+
+import { auth } from "./config"
 
 // Initialize Google Sign-In with the correct webClientId
 // This ID should be the one that ends with .apps.googleusercontent.com from your google-services.json

@@ -22,7 +22,6 @@ import {
   Gavel,
   Wrench,
   MessageSquare,
-  User,
   Church,
   Users,
   Activity,

@@ -1,3 +1,5 @@
+import { useRouter } from "expo-router"
+import { useState } from "react"
 import {
   View,
   Text,
@@ -5,10 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native"
-import { useState } from "react"
-import { useRouter } from "expo-router"
-import { useAuth } from "../../contexts/auth"
+
 import { GoogleIcon } from "../../components/icons/GoogleIcon"
+import { useAuth } from "../../contexts/auth"
 
 export default function SignIn() {
   const [email, setEmail] = useState("")

@@ -1,9 +1,10 @@
 import React from "react"
 import { StyleSheet, TouchableOpacity, Text, View } from "react-native"
 import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated"
-import { theme } from "../../constants/theme"
+
 import { FLOATING_MENU } from "./constants"
 import type { ActionItemProps } from "./types"
+import { theme } from "../../constants/theme"
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)
 

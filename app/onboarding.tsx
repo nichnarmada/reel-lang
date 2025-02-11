@@ -1,3 +1,4 @@
+import { router } from "expo-router"
 import React, { useEffect, useState } from "react"
 import {
   View,
@@ -8,12 +9,13 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native"
-import { router } from "expo-router"
-import { useAuth } from "../contexts/auth"
-import { allCategories } from "@/constants/topics"
-import { useUserPreferences } from "../hooks/useUserPreferences"
+
 import { ErrorMessage } from "../components/ErrorMessage"
 import { theme } from "../constants/theme"
+import { useAuth } from "../contexts/auth"
+import { useUserPreferences } from "../hooks/useUserPreferences"
+
+import { allCategories } from "@/constants/topics"
 
 const minimumCategories = 3
 
