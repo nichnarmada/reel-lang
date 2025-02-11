@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
@@ -6,64 +6,79 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
-  Animated,
-  PanResponder,
 } from "react-native"
 import { Library } from "lucide-react-native"
 import { theme } from "../../constants/theme"
 import type { MenuDrawerProps } from "./types"
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  useSharedValue,
+  interpolate,
+  runOnJS,
+} from "react-native-reanimated"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
 
 export const MenuDrawer: React.FC<MenuDrawerProps> = ({ items }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(100)).current
-  const dragY = useRef(new Animated.Value(0)).current
+  const fadeAnim = useSharedValue(0)
+  const slideAnim = useSharedValue(100)
+  const dragY = useSharedValue(0)
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow downward drag
-        if (gestureState.dy > 0) {
-          dragY.setValue(gestureState.dy)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100) {
-          handleClose()
-        } else {
-          // Otherwise, snap back to original position
-          Animated.spring(dragY, {
-            toValue: 0,
-            tension: 65,
-            friction: 11,
-            useNativeDriver: true,
-          }).start()
-        }
-      },
+  const gesture = Gesture.Pan()
+    .onBegin(() => {
+      "worklet"
+      dragY.value = 0
     })
-  ).current
+    .onUpdate((event) => {
+      "worklet"
+      if (event.translationY > 0) {
+        dragY.value = event.translationY
+      }
+    })
+    .onEnd((event) => {
+      "worklet"
+      if (event.translationY > 100) {
+        runOnJS(handleClose)()
+      } else {
+        dragY.value = withSpring(0, {
+          damping: 15,
+          stiffness: 90,
+        })
+      }
+    })
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnim.value,
+  }))
+
+  const contentStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          interpolate(slideAnim.value, [0, 100], [0, 800]) + dragY.value,
+      },
+    ],
+  }))
 
   const animateClose = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 100,
-        tension: 65,
-        friction: 11,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setModalVisible(false)
-      dragY.setValue(0)
-    })
-  }, [fadeAnim, slideAnim, dragY])
+    fadeAnim.value = withTiming(0, { duration: 200 })
+    slideAnim.value = withSpring(
+      100,
+      {
+        damping: 15,
+        stiffness: 90,
+      },
+      (finished) => {
+        if (finished) {
+          runOnJS(setModalVisible)(false)
+          dragY.value = 0
+        }
+      }
+    )
+  }, [])
 
   const handleClose = () => {
     setIsOpen(false)
@@ -72,23 +87,15 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({ items }) => {
   useEffect(() => {
     if (isOpen) {
       setModalVisible(true)
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 65,
-          friction: 11,
-          useNativeDriver: true,
-        }),
-      ]).start()
+      fadeAnim.value = withTiming(1, { duration: 200 })
+      slideAnim.value = withSpring(0, {
+        damping: 15,
+        stiffness: 90,
+      })
     } else {
       animateClose()
     }
-  }, [isOpen, fadeAnim, slideAnim, animateClose])
+  }, [isOpen])
 
   return (
     <>
@@ -104,62 +111,39 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({ items }) => {
         transparent={true}
         onRequestClose={handleClose}
       >
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
+        <Animated.View style={[styles.modalContainer, overlayStyle]}>
           <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
             onPress={handleClose}
           />
-          <Animated.View
-            style={[
-              styles.modalContent,
-              {
-                transform: [
-                  {
-                    translateY: Animated.add(
-                      slideAnim.interpolate({
-                        inputRange: [0, 100],
-                        outputRange: [0, 800],
-                      }),
-                      dragY
-                    ),
-                  },
-                ],
-              },
-            ]}
-            {...panResponder.panHandlers}
-          >
-            <View style={styles.dragHandleContainer}>
-              <View style={styles.dragHandle} />
-            </View>
+          <GestureDetector gesture={gesture}>
+            <Animated.View style={[styles.modalContent, contentStyle]}>
+              <View style={styles.dragHandleContainer}>
+                <View style={styles.dragHandle} />
+              </View>
 
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Menu</Text>
-            </View>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Menu</Text>
+              </View>
 
-            <View style={styles.menuItems}>
-              {items.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.menuItem}
-                  onPress={() => {
-                    handleClose()
-                    item.onPress()
-                  }}
-                >
-                  <item.icon size={20} color={theme.colors.text.secondary} />
-                  <Text style={styles.menuItemText}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Animated.View>
+              <View style={styles.menuItems}>
+                {items.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.menuItem}
+                    onPress={() => {
+                      handleClose()
+                      item.onPress()
+                    }}
+                  >
+                    <item.icon size={20} color={theme.colors.text.secondary} />
+                    <Text style={styles.menuItemText}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Animated.View>
+          </GestureDetector>
         </Animated.View>
       </Modal>
     </>

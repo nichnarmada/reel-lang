@@ -9,7 +9,6 @@ import {
   TextInput,
   Platform,
   Modal,
-  Animated,
 } from "react-native"
 import { router } from "expo-router"
 import { useAuth } from "../../contexts/auth"
@@ -23,6 +22,13 @@ import { colorManager } from "../../constants/categoryColors"
 import { GeneratedTopic } from "../../types/topic"
 import { generateTopicSuggestions } from "../../services/topics/topicGenerator"
 import { theme } from "../../constants/theme"
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+  useSharedValue,
+  interpolate,
+  runOnJS,
+} from "react-native-reanimated"
 
 interface AIModalProps {
   visible: boolean
@@ -41,10 +47,22 @@ const AIThinkingModal = ({
 }: AIModalProps) => {
   const [dots, setDots] = useState("...")
   const [modalVisible, setModalVisible] = useState(visible)
-  const fadeAnim = useRef(new Animated.Value(0)).current
+  const fadeAnim = useSharedValue(0)
   const [isThinking, setIsThinking] = useState(true)
   const [suggestedTopics, setSuggestedTopics] = useState<GeneratedTopic[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnim.value,
+  }))
+
+  const contentStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scale: interpolate(fadeAnim.value, [0, 1], [0.95, 1]),
+      },
+    ],
+  }))
 
   const generateTopics = async () => {
     try {
@@ -70,24 +88,18 @@ const AIThinkingModal = ({
       setModalVisible(true)
       setIsThinking(true)
       setError(null)
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start()
+      fadeAnim.value = withTiming(1, { duration: 200 })
 
       // Generate topics when modal becomes visible
       generateTopics()
     } else {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        setModalVisible(false)
-        setIsThinking(true)
-        setSuggestedTopics([])
-        setError(null)
+      fadeAnim.value = withTiming(0, { duration: 200 }, (finished) => {
+        if (finished) {
+          runOnJS(setModalVisible)(false)
+          runOnJS(setIsThinking)(true)
+          runOnJS(setSuggestedTopics)([])
+          runOnJS(setError)(null)
+        }
       })
     }
   }, [visible, searchQuery])
@@ -110,29 +122,8 @@ const AIThinkingModal = ({
 
   return (
     <Modal transparent visible={modalVisible} animationType="none">
-      <Animated.View
-        style={[
-          styles.modalOverlay,
-          {
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        <Animated.View
-          style={[
-            styles.modalContent,
-            {
-              transform: [
-                {
-                  scale: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.95, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
+      <Animated.View style={[styles.modalOverlay, overlayStyle]}>
+        <Animated.View style={[styles.modalContent, contentStyle]}>
           <View style={styles.modalCard}>
             {isThinking ? (
               <>
