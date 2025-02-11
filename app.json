@@ -58,6 +58,12 @@
           "iosUrlScheme": "com.googleusercontent.apps.1000000000000-0000000000000000000000000000000000000000000000000000000000000000"
         }
       ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": false
+        }
+      ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth"
     ],
