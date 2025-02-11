@@ -27,18 +27,10 @@ import {
 } from "lucide-react-native"
 import { useAuth } from "../../contexts/auth"
 import {
-  getCollection,
-  FIREBASE_COLLECTIONS,
-  firestore,
   FIREBASE_SUBCOLLECTIONS,
   getUserSubcollectionDoc,
 } from "../../utils/firebase/config"
-import {
-  Timestamp,
-  doc,
-  updateDoc,
-  setDoc,
-} from "@react-native-firebase/firestore"
+import { Timestamp, updateDoc, setDoc } from "@react-native-firebase/firestore"
 import { DifficultyLevel } from "../../types"
 import { SessionDuration } from "@/types/session"
 import { capitalizeText } from "../../utils/utils"
@@ -88,28 +80,18 @@ export default function TopicDetailsScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(100)).current
   const dragY = useRef(new Animated.Value(0)).current
+  const lineAnimation = useRef(new Animated.Value(0)).current
 
   const { favoriteTopic, unfavoriteTopic, isTopicFavorited } = useSavedTopics()
 
   const isGenerated = params.isGenerated === "true"
 
-  // Sample subtopics (we'll make this dynamic later)
-  const subtopics = [
-    "Basic Concepts",
-    "Practical Applications",
-    "Advanced Theory",
-    "History & Evolution",
-    "Modern Developments",
-  ]
-
-  const [relatedTopicLoading, setRelatedTopicLoading] = useState(false)
-
   const [sessionConfig, setSessionConfig] = useState<SessionConfig>({
     difficulty: "beginner",
   })
-  const [configStep, setConfigStep] = useState<"difficulty" | "duration">(
-    "difficulty"
-  )
+  const [configStep, setConfigStep] = useState<
+    "difficulty" | "duration" | "confirm" | "loading"
+  >("difficulty")
 
   const panResponder = useRef(
     PanResponder.create({
@@ -277,6 +259,18 @@ export default function TopicDetailsScreen() {
       pulseAnim.setValue(1)
     }
   }, [loading])
+
+  useEffect(() => {
+    let toValue = 0
+    if (configStep === "duration") toValue = 1
+    else if (configStep === "confirm" || configStep === "loading") toValue = 2
+
+    Animated.timing(lineAnimation, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start()
+  }, [configStep])
 
   const handleStartLearning = async (duration: SessionDuration) => {
     if (!topic || !user) return
@@ -471,83 +465,77 @@ export default function TopicDetailsScreen() {
 
   const renderModalContent = () => {
     const renderDifficultyStep = () => (
-      <View style={styles.modalStep}>
-        <Text style={styles.modalTitle}>Choose Your Learning Level</Text>
-        <Text style={styles.modalSubtitle}>
-          Select the difficulty that best matches your current understanding
-        </Text>
+      <View style={[styles.modalStep, styles.stepContainer]}>
+        <View>
+          <Text style={styles.modalTitle}>Choose Your Learning Level</Text>
+          <Text style={styles.modalSubtitle}>
+            Select the difficulty that best matches your current understanding
+          </Text>
 
-        {["beginner", "intermediate", "advanced"].map((level) => (
-          <TouchableOpacity
-            key={level}
-            style={[
-              styles.configOption,
-              sessionConfig.difficulty === level && styles.selectedOption,
-            ]}
-            onPress={() => {
-              setSessionConfig((prev) => ({
-                ...prev,
-                difficulty: level as DifficultyLevel,
-              }))
-              setConfigStep("duration")
-            }}
-          >
-            <View style={styles.optionContent}>
-              <Text
-                style={[
-                  styles.optionTitle,
-                  sessionConfig.difficulty === level &&
-                    styles.selectedOptionText,
-                ]}
-              >
-                {capitalizeText(level)}
-              </Text>
-              <Text
-                style={[
-                  styles.optionDescription,
-                  sessionConfig.difficulty === level &&
-                    styles.selectedOptionText,
-                ]}
-              >
-                {level === "beginner"
-                  ? "Perfect for first-time learners"
-                  : level === "intermediate"
-                  ? "For those with basic understanding"
-                  : "Deep dive into complex concepts"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+          {["beginner", "intermediate", "advanced"].map((level) => (
+            <TouchableOpacity
+              key={level}
+              style={[
+                styles.difficultyOption,
+                sessionConfig.difficulty === level && styles.selectedOption,
+              ]}
+              onPress={() => {
+                setSessionConfig((prev) => ({
+                  ...prev,
+                  difficulty: level as DifficultyLevel,
+                }))
+                setConfigStep("duration")
+              }}
+            >
+              <View style={styles.optionContent}>
+                <Text
+                  style={[
+                    styles.optionTitle,
+                    sessionConfig.difficulty === level &&
+                      styles.selectedOptionText,
+                  ]}
+                >
+                  {capitalizeText(level)}
+                </Text>
+                <Text
+                  style={[
+                    styles.optionDescription,
+                    sessionConfig.difficulty === level &&
+                      styles.selectedOptionText,
+                  ]}
+                >
+                  {level === "beginner"
+                    ? "Perfect for first-time learners"
+                    : level === "intermediate"
+                    ? "For those with basic understanding"
+                    : "Deep dive into complex concepts"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     )
 
     const renderDurationStep = () => (
-      <View style={styles.modalStep}>
-        <TouchableOpacity
-          style={styles.modalBackButton}
-          onPress={() => setConfigStep("difficulty")}
-        >
-          <ChevronLeft size={24} color={theme.colors.text.primary} />
-          <Text style={styles.modalBackButtonText}>Difficulty</Text>
-        </TouchableOpacity>
+      <View style={[styles.modalStep, styles.stepContainer]}>
+        <View>
+          <Text style={styles.modalTitle}>Choose Session Duration</Text>
+          <Text style={styles.modalSubtitle}>
+            How long would you like to learn for?
+          </Text>
 
-        <Text style={styles.modalTitle}>Choose Session Duration</Text>
-        <Text style={styles.modalSubtitle}>
-          How long would you like to learn for?
-        </Text>
-
-        {sessionLoading.show ? (
-          <LoadingOverlay
-            variant="inline"
-            message={`${sessionLoading.message} (${sessionLoading.step}/${sessionLoading.totalSteps})`}
-            size="large"
-          />
-        ) : (
-          [1, 5, 10, 15].map((duration) => (
+          {[1, 5, 10, 15].map((duration) => (
             <TouchableOpacity
               key={duration}
               style={[styles.configOption]}
-              onPress={() => handleStartLearning(duration as SessionDuration)}
+              onPress={() => {
+                setSessionConfig((prev) => ({
+                  ...prev,
+                  duration: duration as SessionDuration,
+                }))
+                setConfigStep("confirm")
+              }}
             >
               <View style={styles.optionContent}>
                 <View style={styles.durationHeader}>
@@ -562,7 +550,61 @@ export default function TopicDetailsScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
-          ))
+          ))}
+        </View>
+      </View>
+    )
+
+    const renderConfirmStep = () => (
+      <View style={[styles.modalStep, styles.stepContainer]}>
+        {sessionLoading.show ? (
+          <View style={styles.loadingStepContent}>
+            <LoadingOverlay
+              variant="inline"
+              message={`${sessionLoading.message} (${sessionLoading.step}/${sessionLoading.totalSteps})`}
+              size="large"
+            />
+          </View>
+        ) : (
+          <View style={styles.confirmStepContent}>
+            <View>
+              <Text style={styles.modalTitle}>Confirm Your Choices</Text>
+              <Text style={styles.modalSubtitle}>
+                Review your learning session settings
+              </Text>
+
+              <View style={styles.confirmationCard}>
+                <View style={styles.confirmationRow}>
+                  <Text style={styles.confirmationLabel}>Difficulty Level</Text>
+                  <Text style={styles.confirmationValue}>
+                    {capitalizeText(sessionConfig.difficulty)}
+                  </Text>
+                </View>
+                <View style={styles.confirmationRow}>
+                  <Text style={styles.confirmationLabel}>Session Duration</Text>
+                  <Text style={styles.confirmationValue}>
+                    {sessionConfig.duration} minutes
+                  </Text>
+                </View>
+                <View style={styles.confirmationRow}>
+                  <Text style={styles.confirmationLabel}>Number of Videos</Text>
+                  <Text style={styles.confirmationValue}>
+                    {getVideoCount(sessionConfig.duration || 0)} videos
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={() => {
+                setConfigStep("loading")
+                handleStartLearning(sessionConfig.duration as SessionDuration)
+              }}
+            >
+              <Text style={styles.startButtonText}>Start Learning</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     )
@@ -593,24 +635,160 @@ export default function TopicDetailsScreen() {
 
         {/* Step Indicator */}
         <View style={styles.stepIndicator}>
+          <TouchableOpacity
+            onPress={() => {
+              if (
+                configStep === "duration" ||
+                configStep === "confirm" ||
+                configStep === "loading"
+              ) {
+                setConfigStep("difficulty")
+              }
+            }}
+            disabled={configStep === "difficulty"}
+            style={[
+              styles.stepColumn,
+              configStep === "difficulty" && styles.disabledStep,
+            ]}
+          >
+            <View
+              style={[
+                styles.stepDot,
+                (configStep === "difficulty" ||
+                  configStep === "duration" ||
+                  configStep === "confirm" ||
+                  configStep === "loading") &&
+                  styles.activeStepDot,
+                (configStep === "duration" ||
+                  configStep === "confirm" ||
+                  configStep === "loading") &&
+                  styles.completedStepDot,
+              ].filter(Boolean)}
+            />
+            <View style={styles.stepLabelContainer}>
+              <Text
+                style={[
+                  styles.stepLabel,
+                  (configStep === "difficulty" ||
+                    configStep === "duration" ||
+                    configStep === "confirm" ||
+                    configStep === "loading") &&
+                    styles.activeStepLabel,
+                  (configStep === "duration" ||
+                    configStep === "confirm" ||
+                    configStep === "loading") &&
+                    styles.completedStepLabel,
+                ].filter(Boolean)}
+              >
+                Difficulty
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <View style={styles.stepLineContainer}>
+            <View style={styles.stepLine} />
+            <Animated.View
+              style={[
+                styles.completedStepLine,
+                {
+                  position: "absolute",
+                  left: 0,
+                  width: lineAnimation.interpolate({
+                    inputRange: [0, 1, 2],
+                    outputRange: ["0%", "100%", "100%"],
+                  }),
+                },
+              ]}
+            />
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              if (configStep === "confirm" || configStep === "loading") {
+                setConfigStep("duration")
+              }
+            }}
+            disabled={configStep === "difficulty" || configStep === "duration"}
+            style={[
+              styles.stepColumn,
+              (configStep === "difficulty" || configStep === "duration") &&
+                styles.disabledStep,
+            ]}
+          >
+            <View
+              style={[
+                styles.stepDot,
+                (configStep === "duration" ||
+                  configStep === "confirm" ||
+                  configStep === "loading") &&
+                  styles.activeStepDot,
+                (configStep === "confirm" || configStep === "loading") &&
+                  styles.completedStepDot,
+              ].filter(Boolean)}
+            />
+            <View style={styles.stepLabelContainer}>
+              <Text
+                style={[
+                  styles.stepLabel,
+                  (configStep === "duration" ||
+                    configStep === "confirm" ||
+                    configStep === "loading") &&
+                    styles.activeStepLabel,
+                  (configStep === "confirm" || configStep === "loading") &&
+                    styles.completedStepLabel,
+                ].filter(Boolean)}
+              >
+                Duration
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <View style={styles.stepLineContainer}>
+            <View style={styles.stepLine} />
+            <Animated.View
+              style={[
+                styles.completedStepLine,
+                {
+                  position: "absolute",
+                  left: 0,
+                  width: lineAnimation.interpolate({
+                    inputRange: [1, 2],
+                    outputRange: ["0%", "100%"],
+                  }),
+                },
+              ]}
+            />
+          </View>
           <View
             style={[
-              styles.stepDot,
-              configStep === "difficulty" && styles.activeStepDot,
+              styles.stepColumn,
+              (configStep === "difficulty" || configStep === "duration") &&
+                styles.disabledStep,
             ]}
-          />
-          <View style={styles.stepLine} />
-          <View
-            style={[
-              styles.stepDot,
-              configStep === "duration" && styles.activeStepDot,
-            ]}
-          />
+          >
+            <View
+              style={[
+                styles.stepDot,
+                (configStep === "confirm" || configStep === "loading") &&
+                  styles.activeStepDot,
+              ].filter(Boolean)}
+            />
+            <View style={styles.stepLabelContainer}>
+              <Text
+                style={[
+                  styles.stepLabel,
+                  (configStep === "confirm" || configStep === "loading") &&
+                    styles.activeStepLabel,
+                ].filter(Boolean)}
+              >
+                Confirm
+              </Text>
+            </View>
+          </View>
         </View>
 
         {configStep === "difficulty"
           ? renderDifficultyStep()
-          : renderDurationStep()}
+          : configStep === "duration"
+          ? renderDurationStep()
+          : renderConfirmStep()}
       </Animated.View>
     )
   }
@@ -722,34 +900,6 @@ export default function TopicDetailsScreen() {
                     {topic.reasonForSuggestion}
                   </Text>
                 </View>
-
-                {/* Difficulty Selection */}
-                {/* <View style={styles.difficultySection}>
-                  <Text style={styles.sectionSubtitle}>Select Difficulty</Text>
-                  <View style={styles.difficultyContainer}>
-                    {topic.availableDifficulties.map((difficulty) => (
-                      <TouchableOpacity
-                        key={difficulty}
-                        style={[
-                          styles.difficultyBadge,
-                          topic.selectedDifficulty === difficulty &&
-                            styles.selectedDifficulty,
-                        ]}
-                        onPress={() => handleDifficultySelect(difficulty)}
-                      >
-                        <Text
-                          style={[
-                            styles.difficultyText,
-                            topic.selectedDifficulty === difficulty &&
-                              styles.selectedDifficultyText,
-                          ]}
-                        >
-                          {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View> */}
               </View>
 
               {/* Deep Dive Topics */}
@@ -1070,23 +1220,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.border.dark,
     borderRadius: theme.borderRadius.full,
   },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xl,
-  },
   modalTitle: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
   },
   modalSubtitle: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.xl,
+    lineHeight: 24,
   },
   durationOption: {
     flexDirection: "row",
@@ -1212,29 +1356,67 @@ const styles = StyleSheet.create({
   modalStep: {
     padding: theme.spacing.xl,
   },
+  stepContainer: {
+    height: 550, // Increased from 400 to show all options
+  },
   stepIndicator: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
+  },
+  stepColumn: {
+    alignItems: "center",
   },
   stepDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: theme.colors.border.dark,
+    marginBottom: theme.spacing.xs,
   },
   activeStepDot: {
     backgroundColor: theme.colors.primary,
     width: 10,
     height: 10,
   },
+  completedStepDot: {
+    backgroundColor: theme.colors.primary,
+    width: 10,
+    height: 10,
+  },
+  stepLineContainer: {
+    flex: 1,
+    height: 2,
+    marginHorizontal: theme.spacing.xs,
+    marginBottom: theme.spacing.lg,
+    position: "relative",
+  },
   stepLine: {
     flex: 1,
     height: 2,
     backgroundColor: theme.colors.border.dark,
-    marginHorizontal: theme.spacing.sm,
+  },
+  completedStepLine: {
+    height: 2,
+    backgroundColor: theme.colors.primary,
+  },
+  stepLabelContainer: {
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  stepLabel: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+    textAlign: "center",
+  },
+  activeStepLabel: {
+    color: theme.colors.primary,
+    fontWeight: theme.typography.weights.medium,
+  },
+  completedStepLabel: {
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.weights.medium,
   },
   configOption: {
     backgroundColor: theme.colors.background.secondary,
@@ -1268,5 +1450,55 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.xs,
+  },
+  difficultyOption: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  loadingStepContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  confirmationCard: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+  },
+  confirmationRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: theme.spacing.sm,
+  },
+  confirmationLabel: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+  },
+  confirmationValue: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+  },
+  startButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    alignItems: "center",
+  },
+  startButtonText: {
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+  },
+  confirmStepContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    height: "100%",
+    paddingBottom: theme.spacing.xl,
   },
 })
