@@ -326,7 +326,9 @@ export default function VideoPlayer({
             source={{ uri }}
             style={styles.video}
             resizeMode="cover"
-            repeat={true}
+            repeat={
+              !audioUrl && !!(repeat || (targetDuration && videoLoopCount > 1))
+            }
             paused={paused}
             muted={true}
             onLoad={handleLoad}

@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   Alert,
+  Image,
 } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import Animated, {
@@ -40,6 +41,12 @@ import {
   getUserSubcollectionDoc,
 } from "../../utils/firebase/config"
 import { capitalizeText } from "../../utils/utils"
+import {
+  searchVideos,
+  getBestVideoUrl,
+  getVideoThumbnail,
+} from "../../utils/pexels"
+import { prefetchVideo } from "../../utils/videoCache"
 
 import { SessionDuration } from "@/types/session"
 
@@ -271,11 +278,31 @@ export default function TopicDetailsScreen() {
     if (!topic || !user) return
 
     try {
+      // Initial state
       setSessionLoading({
         show: true,
-        message: "Preparing your learning session...",
+        message: "Creating your learning session...",
         step: 1,
-        totalSteps: 4,
+        totalSteps: 1,
+      })
+
+      // Setup message update timers
+      const messageTimers = [
+        { message: "Generating educational content...", delay: 3000 },
+        { message: "Creating video scripts...", delay: 7000 },
+        { message: "Generating audio narration for videos...", delay: 11000 },
+        { message: "Preparing videos...", delay: 15000 },
+        { message: "Almost ready...", delay: 18000 },
+      ]
+
+      // Start message update timers
+      messageTimers.forEach(({ message, delay }) => {
+        setTimeout(() => {
+          setSessionLoading((prev) => ({
+            ...prev,
+            message,
+          }))
+        }, delay)
       })
 
       // Update topic's difficulty
@@ -289,13 +316,6 @@ export default function TopicDetailsScreen() {
         selectedDifficulty: sessionConfig.difficulty,
         lastAccessed: Timestamp.now(),
       })
-
-      // Update to second step
-      setSessionLoading((prev) => ({
-        ...prev,
-        message: "Generating educational content...",
-        step: 2,
-      }))
 
       // Start content generation - this includes audio generation
       const contentBundle = await startContentGeneration(
@@ -311,15 +331,36 @@ export default function TopicDetailsScreen() {
         throw new Error("Failed to generate content")
       }
 
-      // Update to final step
-      setSessionLoading((prev) => ({
-        ...prev,
-        message: "Preparing video experience...",
-        step: 4,
-      }))
+      // Start preloading videos while content is being generated
+      const videoCount =
+        contentBundle.content.videoScripts?.length || getVideoCount(duration)
+      const pexelsVideos = await searchVideos(topic.name, videoCount)
 
-      // Small delay to show the final step
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Start preloading videos and thumbnails
+      const preloadPromises = pexelsVideos.map(async (video) => {
+        const videoUrl = getBestVideoUrl(video)
+        const thumbnail = video.image || (await getVideoThumbnail(video.id))
+
+        // Prefetch both video and thumbnail
+        return Promise.all([
+          prefetchVideo(videoUrl),
+          Image.prefetch(thumbnail),
+        ]).catch((err) => {
+          console.warn("Failed to preload video or thumbnail:", err)
+          return null
+        })
+      })
+
+      // Wait for at least the first video to be preloaded
+      await Promise.race([
+        preloadPromises[0],
+        new Promise((resolve) => setTimeout(resolve, 5000)), // 5s timeout
+      ])
+
+      // Continue preloading the rest in the background
+      Promise.all(preloadPromises).catch((err) => {
+        console.warn("Some videos failed to preload:", err)
+      })
 
       // Navigate to reels with session ID
       setShowDurationModal(false)
@@ -522,55 +563,45 @@ export default function TopicDetailsScreen() {
 
     const renderConfirmStep = () => (
       <View style={[styles.modalStep, styles.stepContainer]}>
-        {sessionLoading.show ? (
-          <View style={styles.loadingStepContent}>
-            <LoadingOverlay
-              variant="inline"
-              message={`${sessionLoading.message} (${sessionLoading.step}/${sessionLoading.totalSteps})`}
-              size="large"
-            />
-          </View>
-        ) : (
-          <View style={styles.confirmStepContent}>
-            <View>
-              <Text style={styles.modalTitle}>Confirm Your Choices</Text>
-              <Text style={styles.modalSubtitle}>
-                Review your learning session settings
-              </Text>
+        <View style={styles.confirmStepContent}>
+          <View>
+            <Text style={styles.modalTitle}>Confirm Your Choices</Text>
+            <Text style={styles.modalSubtitle}>
+              Review your learning session settings
+            </Text>
 
-              <View style={styles.confirmationCard}>
-                <View style={styles.confirmationRow}>
-                  <Text style={styles.confirmationLabel}>Difficulty Level</Text>
-                  <Text style={styles.confirmationValue}>
-                    {capitalizeText(sessionConfig.difficulty)}
-                  </Text>
-                </View>
-                <View style={styles.confirmationRow}>
-                  <Text style={styles.confirmationLabel}>Session Duration</Text>
-                  <Text style={styles.confirmationValue}>
-                    {sessionConfig.duration} minutes
-                  </Text>
-                </View>
-                <View style={styles.confirmationRow}>
-                  <Text style={styles.confirmationLabel}>Number of Videos</Text>
-                  <Text style={styles.confirmationValue}>
-                    {getVideoCount(sessionConfig.duration || 0)} videos
-                  </Text>
-                </View>
+            <View style={styles.confirmationCard}>
+              <View style={styles.confirmationRow}>
+                <Text style={styles.confirmationLabel}>Difficulty Level</Text>
+                <Text style={styles.confirmationValue}>
+                  {capitalizeText(sessionConfig.difficulty)}
+                </Text>
+              </View>
+              <View style={styles.confirmationRow}>
+                <Text style={styles.confirmationLabel}>Session Duration</Text>
+                <Text style={styles.confirmationValue}>
+                  {sessionConfig.duration} minutes
+                </Text>
+              </View>
+              <View style={styles.confirmationRow}>
+                <Text style={styles.confirmationLabel}>Number of Videos</Text>
+                <Text style={styles.confirmationValue}>
+                  {getVideoCount(sessionConfig.duration || 0)} videos
+                </Text>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={styles.startButton}
-              onPress={() => {
-                setConfigStep("loading")
-                handleStartLearning(sessionConfig.duration as SessionDuration)
-              }}
-            >
-              <Text style={styles.startButtonText}>Start Learning</Text>
-            </TouchableOpacity>
           </View>
-        )}
+
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={() => {
+              setConfigStep("loading")
+              handleStartLearning(sessionConfig.duration as SessionDuration)
+            }}
+          >
+            <Text style={styles.startButtonText}>Start Learning</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     )
 
@@ -903,6 +934,15 @@ export default function TopicDetailsScreen() {
             <GestureDetector gesture={gesture}>
               <Animated.View style={[styles.modalContent, modalContentStyle]}>
                 {renderModalContent()}
+                {sessionLoading.show && (
+                  <View style={styles.modalLoadingOverlay}>
+                    <LoadingOverlay
+                      variant="inline"
+                      message={sessionLoading.message}
+                      size="large"
+                    />
+                  </View>
+                )}
               </Animated.View>
             </GestureDetector>
           </Animated.View>
@@ -1251,5 +1291,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     height: "100%",
     paddingBottom: theme.spacing.xl,
+  },
+  modalLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    zIndex: 1000,
   },
 })

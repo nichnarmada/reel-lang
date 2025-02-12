@@ -63,6 +63,18 @@ User stories for DiscoverAI - an intelligent learning platform that adapts to ea
 - [x] As a learner, I want to see my quiz performance trends
 - [ ] As a learner, I want to identify my knowledge gaps
 
+### Audio Features
+
+- [x] As a learner, I want to hear clear audio narration for educational content
+- [x] As a learner, I want different voices for different types of content
+- [x] As a learner, I want to control audio volume independently
+- [x] As a learner, I want audio to continue playing while videos loop
+- [x] As a learner, I want to mute/unmute audio easily
+- [x] As a learner, I want audio to load in the background while I watch
+- [x] As a learner, I want to see when audio is still generating
+- [x] As a learner, I want audio to automatically retry if it fails to load
+- [ ] As a learner, I want to choose my preferred voice for narration
+
 ### Core AI Features
 
 - [x] As a learner, I want AI-generated quiz questions based on my topic

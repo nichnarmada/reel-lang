@@ -205,6 +205,14 @@ sessions/{sessionId}/quiz: {
     };
   }
 }
+
+sessions/{sessionId}/audio: {
+  id: string; // matches segmentId
+  url: string; // Firebase Storage URL for audio file
+  duration: number; // in seconds
+  generatedAt: timestamp;
+  status: "pending" | "completed" | "error";
+}
 ```
 
 Note: Video engagement tracking (views, watch duration, completion) is handled by Firebase Analytics rather than Firestore. This provides better performance and built-in analytics capabilities while keeping our database structure lean.
@@ -265,3 +273,8 @@ service cloud.firestore {
   }
 }
 ```
+
+### Firebase Storage Structure
+
+/sessions/{sessionId}/audio/{segmentId}.mp3 // Generated audio files
+/sessions/{sessionId}/video/{segmentId}.mp4 // Video content
