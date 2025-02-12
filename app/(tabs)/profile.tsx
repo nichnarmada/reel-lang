@@ -1,12 +1,5 @@
 import { useRouter } from "expo-router"
-import {
-  Bell,
-  Share2,
-  HelpCircle,
-  ChevronRight,
-  Brain,
-  Film,
-} from "lucide-react-native"
+import { Film, ChevronRight, Brain } from "lucide-react-native"
 import React from "react"
 import {
   View,
@@ -24,7 +17,6 @@ import { useAuth } from "../../contexts/auth"
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth()
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true)
   const [autoplayEnabled, setAutoplayEnabled] = React.useState(true)
   const router = useRouter()
 
@@ -72,18 +64,6 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>App Settings</Text>
         <View style={styles.settingItem}>
           <View style={styles.settingLeft}>
-            <Bell size={24} color={theme.colors.text.secondary} />
-            <Text style={styles.settingText}>Notifications</Text>
-          </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            trackColor={{ false: "#767577", true: theme.colors.primaryLight }}
-            thumbColor={notificationsEnabled ? theme.colors.primary : "#f4f3f4"}
-          />
-        </View>
-        <View style={styles.settingItem}>
-          <View style={styles.settingLeft}>
             <Film size={24} color={theme.colors.text.secondary} />
             <Text style={styles.settingText}>Autoplay Videos</Text>
           </View>
@@ -94,25 +74,6 @@ export default function ProfileScreen() {
             thumbColor={autoplayEnabled ? theme.colors.primary : "#f4f3f4"}
           />
         </View>
-      </View>
-
-      {/* Support & About */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support & About</Text>
-        <TouchableOpacity style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <Share2 size={24} color={theme.colors.text.secondary} />
-            <Text style={styles.settingText}>Share App</Text>
-          </View>
-          <ChevronRight size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <HelpCircle size={24} color={theme.colors.text.secondary} />
-            <Text style={styles.settingText}>Help & Support</Text>
-          </View>
-          <ChevronRight size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
       </View>
 
       {/* Sign Out */}
