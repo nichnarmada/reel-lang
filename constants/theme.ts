@@ -4,6 +4,7 @@ export const theme = {
     primary: "#8A2BE2", // Bright purple
     primaryLight: "#8A2BE215", // Light purple (15% opacity)
     primaryDark: "#6B24B2", // Darker purple
+    secondary: "#666666", // Secondary color for text and UI elements
 
     // Text colors
     text: {

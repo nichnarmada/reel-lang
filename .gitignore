@@ -60,3 +60,5 @@ ios/Pods/
 
 # Added .env file
 .env
+
+oneshot-format.md

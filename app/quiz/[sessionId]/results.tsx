@@ -21,19 +21,23 @@ import { ErrorMessage } from "../../../components/ErrorMessage"
 import { LoadingOverlay } from "../../../components/LoadingOverlay"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
 import { theme } from "../../../constants/theme"
-import { startQuizAfterSession } from "../../../services/quiz/quizFlow"
-import { Quiz } from "../../../types/quiz"
+import {
+  startQuizAfterSession,
+  getQuizSession,
+  retryQuiz,
+} from "../../../services/quiz/quizFlow"
+import { Quiz, QuizSession } from "../../../types/quiz"
 import { Session } from "../../../types/session"
 import {
   getDocument,
   FIREBASE_COLLECTIONS,
-  getSessionSubcollectionDoc,
-  FIREBASE_SUBCOLLECTIONS,
+  getSessionQuizDoc,
 } from "../../../utils/firebase/config"
 
 export default function QuizResultsScreen() {
   const { sessionId, score, quizId, totalQuestions } = useLocalSearchParams()
   const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [quizSession, setQuizSession] = useState<QuizSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatingQuiz, setGeneratingQuiz] = useState({
@@ -42,6 +46,7 @@ export default function QuizResultsScreen() {
     step: 0,
     totalSteps: 3,
   })
+  const [retrying, setRetrying] = useState(false)
 
   const currentSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId
   const currentScore = Array.isArray(score) ? score[0] : score
@@ -57,12 +62,15 @@ export default function QuizResultsScreen() {
       try {
         if (!currentSessionId) return
 
-        // Get quiz from session's subcollection
-        const quizRef = getSessionSubcollectionDoc(
-          currentSessionId,
-          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
-          "questions"
-        )
+        // First get the quiz session to get user responses and session ID
+        const session = await getQuizSession(currentSessionId)
+        if (!session) {
+          throw new Error("Quiz session not found")
+        }
+        setQuizSession(session)
+
+        // Then get the actual quiz content using the original session ID
+        const quizRef = getSessionQuizDoc(session.sessionId)
         const quizSnapshot = await quizRef.get()
 
         if (!quizSnapshot.exists) {
@@ -157,24 +165,37 @@ export default function QuizResultsScreen() {
     }
   }
 
-  const handleRetry = () => {
-    // Navigate back to quiz
-    router.replace({
-      pathname: "/quiz/[sessionId]" as const,
-      params: {
-        sessionId: currentSessionId,
-        quizId: Array.isArray(quizId) ? quizId[0] : quizId,
-      },
-    })
+  const handleRetry = async () => {
+    try {
+      setRetrying(true)
+      // Create new quiz session with same content
+      const newSessionId = await retryQuiz(currentSessionId)
+
+      // Navigate to quiz with new session
+      router.replace({
+        pathname: "/quiz/[sessionId]" as const,
+        params: { sessionId: newSessionId },
+      })
+    } catch (error) {
+      console.error("Error retrying quiz:", error)
+      Alert.alert("Error", "Failed to restart quiz. Please try again.")
+    } finally {
+      setRetrying(false)
+    }
   }
 
   const handleContinueLearning = () => {
-    // Navigate to quiz history/review screen
+    if (!quizSession) {
+      Alert.alert("Error", "Quiz session data not found")
+      return
+    }
+
+    // Navigate to quiz history/review screen with correct IDs and responses
     router.replace({
       pathname: "/quiz-history/[quizId]" as const,
       params: {
-        quizId: `${currentSessionId}_quiz`, // This matches our quiz ID format
-        sessionId: currentSessionId,
+        quizId: quizSession.id, // Use the actual quiz session ID
+        sessionId: quizSession.sessionId, // Use original session ID to get quiz content
         score: currentScore,
         totalQuestions: total,
       },
@@ -223,7 +244,9 @@ export default function QuizResultsScreen() {
         >
           {/* Topic Name */}
           {quiz && (
-            <Text style={styles.topicName}>{quiz.metadata.topics[0]}</Text>
+            <Text style={styles.topicName}>
+              {quizSession?.topicEmoji || "📚"} {quizSession?.topicName}
+            </Text>
           )}
 
           {/* Trophy Icon */}
@@ -278,10 +301,14 @@ export default function QuizResultsScreen() {
         </ScrollView>
 
         {/* Loading Overlay */}
-        {generatingQuiz.show && (
+        {(generatingQuiz.show || retrying) && (
           <LoadingOverlay
             variant="overlay"
-            message={`${generatingQuiz.message} (${generatingQuiz.step}/${generatingQuiz.totalSteps})`}
+            message={
+              retrying
+                ? "Preparing quiz retry..."
+                : `${generatingQuiz.message} (${generatingQuiz.step}/${generatingQuiz.totalSteps})`
+            }
             size="large"
             isTransparent={false}
           />

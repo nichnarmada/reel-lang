@@ -27,25 +27,28 @@ export interface UserResponse {
   timeSpent: number
 }
 
-export interface QuizMetadata {
-  generatedAt: Timestamp
-  difficulty: DifficultyLevel
-  topics: string[]
-  segmentBreakdown?: {
-    core: number
-    quick: number
-    recap: number
-  }
-  userProgress?: UserProgress
-}
-
+// Quiz content stored in session subcollection
 export interface Quiz {
   id: string
   sessionId: string
   userId: string
   questions: Question[]
+}
+
+// Quiz session state stored in quizSessions collection
+export interface QuizSession {
+  id: string
+  userId: string
+  sessionId: string
+  status: QuizStatus
+  currentQuestionIndex: number
+  startedAt?: Timestamp
+  lastUpdatedAt: Timestamp
+  completedAt?: Timestamp
   userResponses: UserResponse[]
-  metadata: QuizMetadata
+  // Denormalized fields for UI convenience
+  topicName: string
+  topicEmoji?: string
 }
 
 // Context type for quiz generation
@@ -140,3 +143,5 @@ export const getGenerationStrategy = (
       }
   }
 }
+
+export type QuizStatus = "pending" | "in_progress" | "completed"

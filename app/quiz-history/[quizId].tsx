@@ -14,22 +14,24 @@ import { ErrorMessage } from "../../components/ErrorMessage"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { theme } from "../../constants/theme"
 import { useAuth } from "../../contexts/auth"
-import { Quiz, Question, UserResponse } from "../../types/quiz"
+import { Quiz, Question, UserResponse, QuizSession } from "../../types/quiz"
 import {
   getDocument,
   FIREBASE_COLLECTIONS,
-  getSessionSubcollectionDoc,
-  FIREBASE_SUBCOLLECTIONS,
+  getSessionQuizDoc,
 } from "../../utils/firebase/config"
+import { getQuizSession } from "../../services/quiz/quizFlow"
 
-type QuizWithTopic = Quiz & {
+type QuizWithResponses = Quiz & {
   topicName: string
+  topicEmoji?: string
+  userResponses: UserResponse[]
 }
 
 export default function QuizDetailScreen() {
   const { quizId, sessionId } = useLocalSearchParams()
   const { user } = useAuth()
-  const [quiz, setQuiz] = useState<QuizWithTopic | null>(null)
+  const [quiz, setQuiz] = useState<QuizWithResponses | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,32 +40,32 @@ export default function QuizDetailScreen() {
       if (!user) return
 
       try {
+        const currentQuizId = Array.isArray(quizId) ? quizId[0] : quizId
         const currentSessionId = Array.isArray(sessionId)
           ? sessionId[0]
           : sessionId
 
-        // Get quiz from session's subcollection
-        const quizRef = getSessionSubcollectionDoc(
-          currentSessionId,
-          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
-          "questions"
-        )
+        // First get the quiz session to get user responses
+        const quizSession = await getQuizSession(currentQuizId)
+        if (!quizSession) {
+          throw new Error("Quiz session not found")
+        }
+
+        // Then get the quiz content using the original session ID
+        const quizRef = getSessionQuizDoc(currentSessionId)
         const quizSnapshot = await quizRef.get()
 
         if (!quizSnapshot.exists) {
-          throw new Error("Quiz not found")
+          throw new Error("Quiz content not found")
         }
 
         const quizData = quizSnapshot.data() as Quiz
-        const sessionDoc = getDocument(
-          FIREBASE_COLLECTIONS.SESSIONS,
-          currentSessionId
-        )
-        const sessionSnapshot = await sessionDoc.get()
 
         setQuiz({
           ...quizData,
-          topicName: sessionSnapshot.data()?.topicName || "Unknown Topic",
+          topicName: quizSession.topicName,
+          topicEmoji: quizSession.topicEmoji,
+          userResponses: quizSession.userResponses,
         })
       } catch (err) {
         console.error("Error loading quiz:", err)
@@ -82,7 +84,7 @@ export default function QuizDetailScreen() {
     index: number
   ) => {
     return (
-      <View key={question.question} style={styles.questionContainer}>
+      <View key={question.id} style={styles.questionContainer}>
         <Text style={styles.questionNumber}>Question {index + 1}</Text>
         <Text style={styles.questionText}>{question.question}</Text>
 
@@ -92,21 +94,21 @@ export default function QuizDetailScreen() {
               key={option}
               style={[
                 styles.optionItem,
+                option === question.correctAnswer && styles.correctAnswer,
                 option === response.selectedAnswer &&
                   (response.isCorrect
                     ? styles.correctSelected
                     : styles.incorrectSelected),
-                option === question.correctAnswer && styles.correctAnswer,
               ]}
             >
               <Text
                 style={[
                   styles.optionText,
+                  option === question.correctAnswer && styles.correctAnswerText,
                   option === response.selectedAnswer &&
                     (response.isCorrect
                       ? styles.correctSelectedText
                       : styles.incorrectSelectedText),
-                  option === question.correctAnswer && styles.correctAnswerText,
                 ]}
               >
                 {option}
@@ -151,7 +153,9 @@ export default function QuizDetailScreen() {
   ).length
   const totalQuestions = quiz.questions.length
   const percentage = (correctAnswers / totalQuestions) * 100
-  const date = new Date(quiz.metadata.generatedAt.seconds * 1000)
+  const date = quiz.userResponses[0]?.timeSpent
+    ? new Date(Date.now() - quiz.userResponses[0].timeSpent)
+    : new Date()
 
   return (
     <View style={styles.container}>
@@ -169,7 +173,9 @@ export default function QuizDetailScreen() {
       <ScrollView style={styles.content}>
         {/* Quiz Summary */}
         <View style={styles.summaryContainer}>
-          <Text style={styles.topicName}>{quiz.topicName}</Text>
+          <Text style={styles.topicName}>
+            {quiz.topicEmoji || "📚"} {quiz.topicName}
+          </Text>
           <Text style={styles.date}>
             {date.toLocaleDateString()} at {date.toLocaleTimeString()}
           </Text>
@@ -293,13 +299,15 @@ const styles = StyleSheet.create({
   correctSelected: {
     backgroundColor: `${theme.colors.status.success}15`,
     borderColor: theme.colors.status.success,
+    borderWidth: 2,
   },
   incorrectSelected: {
     backgroundColor: `${theme.colors.status.error}15`,
     borderColor: theme.colors.status.error,
+    borderWidth: 2,
   },
   correctAnswer: {
-    backgroundColor: `${theme.colors.status.success}15`,
+    backgroundColor: `${theme.colors.status.success}10`,
     borderColor: theme.colors.status.success,
   },
   correctSelectedText: {

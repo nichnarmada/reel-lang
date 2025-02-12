@@ -257,9 +257,10 @@ export default function ReelsScreen() {
                 }))
 
                 // Generate the quiz
-                const quizId = await startQuizAfterSession(
+                const { quizId, quizSessionId } = await startQuizAfterSession(
                   session,
-                  userProgress
+                  userProgress,
+                  true // Start immediately when clicking "Take Quiz"
                 )
 
                 // Final step before navigation
@@ -279,8 +280,7 @@ export default function ReelsScreen() {
                 router.replace({
                   pathname: "/quiz/[sessionId]" as const,
                   params: {
-                    sessionId: session.id,
-                    quizId,
+                    sessionId: quizSessionId,
                   },
                 })
               } catch (error) {
@@ -297,9 +297,25 @@ export default function ReelsScreen() {
           {
             text: "Skip",
             style: "cancel",
-            onPress: () => {
-              // Navigate back to home or handle skip
-              router.replace("/(tabs)" as const)
+            onPress: async () => {
+              // Navigate back to home immediately
+              router.replace("/(tabs)/learning" as const)
+
+              // Generate the quiz in the background
+              try {
+                const { quizId, quizSessionId } = await startQuizAfterSession(
+                  session,
+                  userProgress,
+                  false // Set as pending when skipping
+                )
+                console.log("Generated pending quiz:", {
+                  quizId,
+                  quizSessionId,
+                })
+              } catch (error) {
+                console.error("Error generating skipped quiz:", error)
+                // No need to show error to user since they're already on the learning tab
+              }
             },
           },
         ],

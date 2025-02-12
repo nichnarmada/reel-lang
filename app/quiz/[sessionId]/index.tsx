@@ -12,11 +12,14 @@ import {
 
 import { ErrorMessage } from "../../../components/ErrorMessage"
 import { LoadingSpinner } from "../../../components/LoadingSpinner"
-import { Question, Quiz } from "../../../types/quiz"
+import { Question, Quiz, QuizSession } from "../../../types/quiz"
 import {
   getSessionSubcollectionDoc,
   FIREBASE_SUBCOLLECTIONS,
+  getSessionQuizDoc,
+  getQuizSessionDoc,
 } from "../../../utils/firebase/config"
+import { getQuizSession } from "../../../services/quiz/quizFlow"
 
 export default function QuizScreen() {
   const params = useLocalSearchParams()
@@ -31,6 +34,7 @@ export default function QuizScreen() {
   >({})
   const [startTimes, setStartTimes] = useState<Record<string, number>>({})
   const [quizData, setQuizData] = useState<Quiz | null>(null)
+  const [quizSession, setQuizSession] = useState<QuizSession | null>(null)
 
   useEffect(() => {
     const loadQuiz = async () => {
@@ -39,28 +43,34 @@ export default function QuizScreen() {
           ? sessionId[0]
           : sessionId
 
-        // Get quiz from session's subcollection
-        const quizRef = getSessionSubcollectionDoc(
-          currentSessionId,
-          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
-          "questions"
-        )
-        const quizSnapshot = await quizRef.get()
+        // First get the quiz session for state/progress
+        const quizSession = await getQuizSession(currentSessionId)
+        if (!quizSession) {
+          throw new Error("Quiz session not found")
+        }
+        setQuizSession(quizSession)
 
+        // Then get the actual quiz content from session's subcollection
+        const quizRef = getSessionQuizDoc(quizSession.sessionId)
+        const quizSnapshot = await quizRef.get()
         if (!quizSnapshot.exists) {
           throw new Error("Quiz not found")
         }
 
         const quiz = quizSnapshot.data() as Quiz
-
         setQuizData(quiz)
         setQuestions(quiz.questions || [])
 
-        // Set start time for first question
+        // Set start time for first question using question ID
         if (quiz.questions && quiz.questions.length > 0) {
           setStartTimes({
-            [quiz.questions[0].question]: Date.now(),
+            [quiz.questions[0].id]: Date.now(),
           })
+        }
+
+        // Set current question index from session if it exists
+        if (quizSession.currentQuestionIndex > 0) {
+          setCurrentQuestionIndex(quizSession.currentQuestionIndex)
         }
       } catch (err) {
         console.error("Error loading quiz:", err)
@@ -88,21 +98,32 @@ export default function QuizScreen() {
 
     // If there are more questions, advance and set new start time
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
+      const nextIndex = currentQuestionIndex + 1
+      setCurrentQuestionIndex(nextIndex)
       setStartTimes((prev) => ({
         ...prev,
-        [questions[currentQuestionIndex + 1].question]: Date.now(),
+        [questions[nextIndex].id]: Date.now(),
       }))
+
+      // Update quiz session with new question index
+      const currentSessionId = Array.isArray(sessionId)
+        ? sessionId[0]
+        : sessionId
+      const quizSessionRef = getQuizSessionDoc(currentSessionId)
+      await quizSessionRef.update({
+        currentQuestionIndex: nextIndex,
+        lastUpdatedAt: new Date(),
+      })
     } else {
       // Quiz completed, prepare responses
       const userResponses = questions.map((question) => ({
-        questionId: question.question,
-        selectedAnswer: selectedAnswers[question.question] || selectedAnswer,
+        questionId: question.id,
+        selectedAnswer: selectedAnswers[question.id] || selectedAnswer,
         isCorrect:
-          (selectedAnswers[question.question] || selectedAnswer) ===
+          (selectedAnswers[question.id] || selectedAnswer) ===
           question.correctAnswer,
-        timeSpent: startTimes[question.question]
-          ? Date.now() - startTimes[question.question]
+        timeSpent: startTimes[question.id]
+          ? Date.now() - startTimes[question.id]
           : 0,
       }))
 
@@ -112,17 +133,17 @@ export default function QuizScreen() {
       ).length
 
       try {
-        // Update quiz document with responses
+        // Update quiz session with completion status and responses
         const currentSessionId = Array.isArray(sessionId)
           ? sessionId[0]
           : sessionId
-        const quizRef = getSessionSubcollectionDoc(
-          currentSessionId,
-          FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ,
-          "questions"
-        )
-        await quizRef.update({
+        const quizSessionRef = getQuizSessionDoc(currentSessionId)
+        await quizSessionRef.update({
+          status: "completed",
+          completedAt: new Date(),
+          lastUpdatedAt: new Date(),
           userResponses,
+          currentQuestionIndex: questions.length - 1,
         })
 
         // Navigate to results
@@ -175,7 +196,8 @@ export default function QuizScreen() {
             <ChevronLeft size={24} color="#000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {quizData?.metadata?.topics?.[0] || "Session"} Quiz
+            {quizSession?.topicEmoji || "📚"}{" "}
+            {quizSession?.topicName || "Session"} Quiz
           </Text>
         </View>
 
@@ -201,17 +223,15 @@ export default function QuizScreen() {
                 key={index}
                 style={[
                   styles.optionButton,
-                  selectedAnswers[currentQuestion.question] === option &&
+                  selectedAnswers[currentQuestion.id] === option &&
                     styles.selectedOption,
                 ]}
-                onPress={() =>
-                  handleSelectOption(currentQuestion.question, option)
-                }
+                onPress={() => handleSelectOption(currentQuestion.id, option)}
               >
                 <Text
                   style={[
                     styles.optionText,
-                    selectedAnswers[currentQuestion.question] === option &&
+                    selectedAnswers[currentQuestion.id] === option &&
                       styles.selectedOptionText,
                   ]}
                 >

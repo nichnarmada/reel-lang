@@ -7,8 +7,10 @@ import {
   Star,
   Pause,
   History,
+  Brain,
+  CheckCircle2,
 } from "lucide-react-native"
-import React from "react"
+import React, { useEffect, useState } from "react"
 import {
   View,
   Text,
@@ -16,6 +18,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Alert,
 } from "react-native"
 
 import { ErrorMessage } from "../../components/ErrorMessage"
@@ -24,15 +27,46 @@ import { MenuDrawer } from "../../components/menu-drawer"
 import { theme } from "../../constants/theme"
 import { useAuth } from "../../contexts/auth"
 import { useLearningSession } from "../../hooks/useLearningSession"
+import { useUserQuizSessions } from "../../hooks/useQuizSession"
+import { startPendingQuiz, getQuizContent } from "../../services/quiz/quizFlow"
+import { Quiz } from "../../types/quiz"
 
 export default function LearningScreen() {
   const { user } = useAuth()
+  const [quizContents, setQuizContents] = useState<Record<string, Quiz>>({})
   const {
     sessions,
     loading: loadingSessions,
     error: sessionsError,
     resumeSession,
   } = useLearningSession(user?.uid || "")
+  const {
+    sessions: quizSessions,
+    loading: loadingQuizzes,
+    error: quizError,
+  } = useUserQuizSessions(user?.uid)
+
+  useEffect(() => {
+    // Load quiz content for each quiz session
+    const loadQuizContents = async () => {
+      const contents: Record<string, Quiz> = {}
+      for (const quiz of quizSessions) {
+        try {
+          const content = await getQuizContent(quiz.sessionId)
+          if (content) {
+            contents[quiz.id] = content
+          }
+        } catch (error) {
+          console.error("Error loading quiz content:", error)
+        }
+      }
+      setQuizContents(contents)
+    }
+
+    if (quizSessions.length > 0) {
+      loadQuizContents()
+    }
+  }, [quizSessions])
 
   const handleResumeSession = async (sessionId: string) => {
     try {
@@ -63,6 +97,22 @@ export default function LearningScreen() {
     }
   }
 
+  const handleStartQuiz = async (quizSessionId: string) => {
+    try {
+      // Start the quiz first
+      await startPendingQuiz(quizSessionId)
+
+      // Then navigate to quiz screen
+      router.push({
+        pathname: "/quiz/[sessionId]" as const,
+        params: { sessionId: quizSessionId },
+      })
+    } catch (error) {
+      console.error("Error starting quiz:", error)
+      Alert.alert("Error", "Failed to start quiz. Please try again.")
+    }
+  }
+
   if (!user) {
     return (
       <View style={styles.centerContainer}>
@@ -71,7 +121,7 @@ export default function LearningScreen() {
     )
   }
 
-  if (loadingSessions) {
+  if (loadingSessions || loadingQuizzes) {
     return (
       <View style={styles.centerContainer}>
         <LoadingSpinner />
@@ -82,16 +132,22 @@ export default function LearningScreen() {
     )
   }
 
-  if (sessionsError) {
+  if (sessionsError || quizError) {
     return (
       <View style={styles.centerContainer}>
-        <ErrorMessage message={sessionsError} />
+        <ErrorMessage
+          message={sessionsError || quizError || "An error occurred"}
+        />
       </View>
     )
   }
 
   const activeSessions = sessions.filter((s) => s.status === "active")
   const pausedSessions = sessions.filter((s) => s.status === "paused")
+  const pendingQuizzes = quizSessions.filter((q) => q.status === "pending")
+  const inProgressQuizzes = quizSessions.filter(
+    (q) => q.status === "in_progress"
+  )
 
   return (
     <ScrollView style={styles.container}>
@@ -121,6 +177,106 @@ export default function LearningScreen() {
             ]}
           />
         </View>
+      </View>
+
+      {/* Quizzes Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.sectionTitle}>Your Quizzes</Text>
+          </View>
+        </View>
+
+        {pendingQuizzes.length > 0 || inProgressQuizzes.length > 0 ? (
+          <View style={styles.sessionsList}>
+            {inProgressQuizzes.map((quiz) => (
+              <View key={quiz.id} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <View style={styles.sessionInfo}>
+                    <Text style={styles.topicName}>
+                      {quiz.topicEmoji || "📚"} {quiz.topicName}
+                    </Text>
+                    <View style={styles.progressInfo}>
+                      <View style={styles.progressBadge}>
+                        <Brain size={14} color={theme.colors.text.secondary} />
+                        <Text style={styles.progressText}>
+                          Question {quiz.currentQuestionIndex + 1} of{" "}
+                          {quizContents[quiz.id]?.questions?.length || 0}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.sessionBadge}>
+                    <Timer size={14} color={theme.colors.text.secondary} />
+                    <Text style={styles.sessionBadgeText}>In Progress</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.resumeButton}
+                  onPress={() => handleStartQuiz(quiz.id)}
+                >
+                  <Play size={16} color={theme.colors.primary} />
+                  <Text style={styles.resumeButtonText}>Continue Quiz</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {pendingQuizzes.map((quiz) => (
+              <View key={quiz.id} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <View style={styles.sessionInfo}>
+                    <Text style={styles.topicName}>
+                      {quiz.topicEmoji || "📚"} {quiz.topicName}
+                    </Text>
+                    <View style={styles.progressInfo}>
+                      <View style={styles.progressBadge}>
+                        <CheckCircle2
+                          size={14}
+                          color={theme.colors.text.secondary}
+                        />
+                        <Text style={styles.progressText}>
+                          {quizContents[quiz.id]?.questions?.length || 0}{" "}
+                          questions
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.sessionBadge}>
+                    <Timer size={14} color={theme.colors.text.secondary} />
+                    <Text style={styles.sessionBadgeText}>Ready to Start</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.resumeButton}
+                  onPress={() => handleStartQuiz(quiz.id)}
+                >
+                  <Play size={16} color={theme.colors.primary} />
+                  <Text style={styles.resumeButtonText}>Start Quiz</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptySessionContainer}>
+            <CheckCircle2 size={24} color={theme.colors.text.secondary} />
+            <Text style={styles.emptyStateText}>
+              All caught up! No pending quizzes.
+            </Text>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={() => router.push("/")}
+            >
+              <Play
+                size={16}
+                color={theme.colors.text.inverse}
+                style={styles.buttonIcon}
+              />
+              <Text style={styles.startButtonText}>Start Learning</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Active Sessions Section */}

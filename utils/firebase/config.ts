@@ -13,6 +13,7 @@ export const FIREBASE_COLLECTIONS = {
   VIDEOS: "videos",
   SESSIONS: "sessions",
   QUIZZES: "quizzes",
+  QUIZ_SESSIONS: "quizSessions",
   SAVED_VIDEOS: "savedVideos",
   FAVORITED_TOPICS: "favoritedTopics",
 } as const
@@ -27,7 +28,10 @@ export const FIREBASE_SUBCOLLECTIONS = {
   SESSION: {
     CONTENT: "content", // sessions/{sessionId}/content
     SCRIPTS: "scripts", // sessions/{sessionId}/scripts
-    QUIZ: "quiz", // sessions/{sessionId}/quiz
+    QUIZ: {
+      ROOT: "quiz", // sessions/{sessionId}/quiz
+      QUESTIONS: "questions", // sessions/{sessionId}/quiz/questions - stores the actual quiz content
+    },
   },
 } as const
 
@@ -39,8 +43,12 @@ export type FirebaseCollection =
 export type UserSubcollection =
   (typeof FIREBASE_SUBCOLLECTIONS.USER)[keyof typeof FIREBASE_SUBCOLLECTIONS.USER]
 
+export type SessionQuizSubcollection =
+  (typeof FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ)[keyof typeof FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ]
+
 export type SessionSubcollection =
-  (typeof FIREBASE_SUBCOLLECTIONS.SESSION)[keyof typeof FIREBASE_SUBCOLLECTIONS.SESSION]
+  | (typeof FIREBASE_SUBCOLLECTIONS.SESSION)[keyof typeof FIREBASE_SUBCOLLECTIONS.SESSION]
+  | SessionQuizSubcollection
 
 // Get Firebase instances
 const auth = getAuth()
@@ -69,6 +77,20 @@ export const getSessionSubcollectionDoc = (
   docId: string
 ) =>
   doc(firestore, FIREBASE_COLLECTIONS.SESSIONS, sessionId, subcollection, docId)
+
+// Helper for getting quiz questions from a session
+export const getSessionQuizDoc = (sessionId: string) =>
+  doc(
+    firestore,
+    FIREBASE_COLLECTIONS.SESSIONS,
+    sessionId,
+    FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ.ROOT,
+    FIREBASE_SUBCOLLECTIONS.SESSION.QUIZ.QUESTIONS
+  )
+
+// Helper for quiz sessions collection
+export const getQuizSessionDoc = (quizSessionId: string) =>
+  doc(firestore, FIREBASE_COLLECTIONS.QUIZ_SESSIONS, quizSessionId)
 
 // Export configured instances and helpers
 export { auth, firestore, collection, doc, getDocs, setDoc }
