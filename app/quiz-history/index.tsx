@@ -15,20 +15,15 @@ import {
 import { ErrorMessage } from "../../components/ErrorMessage"
 import { LoadingSpinner } from "../../components/LoadingSpinner"
 import { useAuth } from "../../contexts/auth"
-import { Quiz } from "../../types/quiz"
+import { QuizSession } from "../../types/quiz"
 import {
   getCollection,
-  getDocument,
   FIREBASE_COLLECTIONS,
 } from "../../utils/firebase/config"
 
-type QuizHistoryItem = Quiz & {
-  topicName: string // We'll denormalize this for convenience
-}
-
 export default function QuizHistoryScreen() {
   const { user } = useAuth()
-  const [quizzes, setQuizzes] = useState<QuizHistoryItem[]>([])
+  const [quizSessions, setQuizSessions] = useState<QuizSession[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,34 +32,24 @@ export default function QuizHistoryScreen() {
     if (!user) return
 
     try {
-      const quizzesCollection = getCollection(FIREBASE_COLLECTIONS.QUIZZES)
-      const quizSnapshot = await quizzesCollection
+      const quizSessionsCollection = getCollection(
+        FIREBASE_COLLECTIONS.QUIZ_SESSIONS
+      )
+      const sessionsSnapshot = await quizSessionsCollection
         .where("userId", "==", user.uid)
-        .orderBy("metadata.generatedAt", "desc")
+        .where("status", "==", "completed")
+        .orderBy("completedAt", "desc")
         .get()
 
-      const quizData = await Promise.all(
-        quizSnapshot.docs.map(async (doc) => {
-          const quiz = doc.data() as Quiz
-          // Fetch topic name from session
-          const sessionDoc = getDocument(
-            FIREBASE_COLLECTIONS.SESSIONS,
-            quiz.sessionId
-          )
-          const sessionSnapshot = await sessionDoc.get()
-
-          return {
-            ...quiz,
-            topicName: sessionSnapshot.data()?.topicName || "Unknown Topic",
-          } as QuizHistoryItem
-        })
+      const sessionData = sessionsSnapshot.docs.map(
+        (doc) => doc.data() as QuizSession
       )
 
-      setQuizzes(quizData)
+      setQuizSessions(sessionData)
 
       // Log analytics event
       analytics().logEvent("quiz_history_view", {
-        quiz_count: quizData.length,
+        quiz_count: sessionData.length,
       })
     } catch (err) {
       console.error("Error loading quizzes:", err)
@@ -84,33 +69,40 @@ export default function QuizHistoryScreen() {
     loadQuizzes()
   }
 
-  const handleQuizSelect = (quizId: string) => {
+  const handleQuizSelect = (quizSession: QuizSession) => {
     analytics().logEvent("quiz_review_open", {
-      quiz_id: quizId,
+      quiz_id: quizSession.id,
       from_screen: "history",
     })
 
     router.push({
       pathname: "/quiz-history/[quizId]" as const,
-      params: { quizId },
+      params: {
+        quizId: quizSession.id,
+        sessionId: quizSession.sessionId,
+      },
     })
   }
 
-  const renderQuizItem = ({ item }: { item: QuizHistoryItem }) => {
+  const renderQuizItem = ({ item }: { item: QuizSession }) => {
     const correctAnswers = item.userResponses.filter(
       (response) => response.isCorrect
     ).length
-    const totalQuestions = item.questions.length
+    const totalQuestions = item.userResponses.length
     const percentage = (correctAnswers / totalQuestions) * 100
-    const date = new Date(item.metadata.generatedAt.seconds * 1000)
+    const date = item.completedAt
+      ? new Date(item.completedAt.seconds * 1000)
+      : new Date()
 
     return (
       <TouchableOpacity
         style={styles.quizItem}
-        onPress={() => handleQuizSelect(item.id)}
+        onPress={() => handleQuizSelect(item)}
       >
         <View style={styles.quizInfo}>
-          <Text style={styles.topicName}>{item.topicName}</Text>
+          <Text style={styles.topicName}>
+            {item.topicEmoji || "📚"} {item.topicName}
+          </Text>
           <Text style={styles.date}>
             {date.toLocaleDateString()} at {date.toLocaleTimeString()}
           </Text>
@@ -161,7 +153,7 @@ export default function QuizHistoryScreen() {
           <View style={styles.centerContainer}>
             <ErrorMessage message={error} />
           </View>
-        ) : quizzes.length === 0 ? (
+        ) : quizSessions.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No quizzes completed yet</Text>
             <Text style={styles.emptySubtext}>
@@ -170,7 +162,7 @@ export default function QuizHistoryScreen() {
           </View>
         ) : (
           <FlatList
-            data={quizzes}
+            data={quizSessions}
             renderItem={renderQuizItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContainer}

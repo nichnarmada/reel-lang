@@ -36,10 +36,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# Firebase config files
-google-services.json
-GoogleService-Info.plist
-
 # Yarn
 .yarn/*
 !.yarn/patches
